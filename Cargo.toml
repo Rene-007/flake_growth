@@ -1,0 +1,27 @@
+[package]
+name = "flake_growth"
+version = "0.30.0"
+authors = ["René Kullock"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+include = [
+    "src/*.rs",
+    "src/**/*.rs"
+]
+
+[dependencies]
+kiss3d = "0.23.0"
+nalgebra = "0.20.0"
+ndarray = "0.13.0"
+bit-vec = "0.6.1"
+rand = { version = "0.7.3", features = [ "small_rng" ] }
+separator = "0.4.1"
+csv = "1.1.3"
+
+
+# lto does not improve the performance
+# [profile.release]         # Modify profile settings via config.
+# lto = true                # Sets link-time optimization.
