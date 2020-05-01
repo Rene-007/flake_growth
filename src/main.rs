@@ -209,13 +209,13 @@ fn main() {
                             flake.clear();
                             // left arm
                             let pos = XYZ{x: -15.0, y: 0.0, z: 0.0};
-                            flake.add_box(pos, 20.0, 10.0, 6.0, true);
+                            flake.add_box(pos, 20.0, 10.0, 6.0, State::Gold);
                             // left arm scond level
                             let pos = XYZ{x: -15.0, y: 0.0, z: 3.5};
-                            flake.add_box(pos, 18.0, 8.0, 1.0, true);
+                            flake.add_box(pos, 18.0, 8.0, 1.0, State::Gold);
                             // right arm
                             let pos = XYZ{x: 15.0, y: 0.0, z: 0.0};
-                            flake.add_box(pos, 20.0, 10.0, 6.0, true);
+                            flake.add_box(pos, 20.0, 10.0, 6.0, State::Gold);
                             // other stuff
                             camera = ArcBall::new(Point3::new(-45.0, 22.5, 0.0), Point3::origin());
                             window.render_with_camera(&mut camera);
@@ -239,13 +239,13 @@ fn main() {
                             flake.add_rounded_box(pos, 5.0, 42.0, 3.0, 2.0);
                             // left protector
                             let pos = XYZ{x: -14.0, y: 25.0, z: -1.5};
-                            flake.add_box(pos, 6.0, 44.0, 4.0, false);
+                            flake.add_box(pos, 6.0, 44.0, 4.0, State::Dirt);
                             // right protector
                             let pos = XYZ{x: 14.0, y: -25.0, z: -1.5};
-                            flake.add_box(pos, 6.0, 44.0, 4.0, false);
+                            flake.add_box(pos, 6.0, 44.0, 4.0, State::Dirt);
                             // waist for the left arm
                             let pos = XYZ{x: -14.0, y: 0.0, z: 0.0};
-                            flake.add_box(pos, 10.0, 12.0, 7.0, false);
+                            flake.add_box(pos, 10.0, 12.0, 7.0, State::Dirt);
                             // other stuff
                             camera = ArcBall::new(Point3::new(-60.0, 60.0, 0.0), Point3::origin());
                             window.render_with_camera(&mut camera);
@@ -258,16 +258,16 @@ fn main() {
                             flake.clear();
                             // left arm
                             let pos = XYZ{x: -15.0, y: 0.0, z: 0.0};
-                            flake.add_box(pos, 20.0, 10.0, 6.0, true);
+                            flake.add_box(pos, 20.0, 10.0, 6.0, State::Gold);
                             // right arm
                             let pos = XYZ{x: 15.0, y: 0.0, z: 0.0};
-                            flake.add_box(pos, 20.0, 10.0, 6.0, true);
+                            flake.add_box(pos, 20.0, 10.0, 6.0, State::Gold);
                             // left connector;
                             let pos = XYZ{x: -15.0, y: 25.0, z: -1.5};
-                            flake.add_box(pos, 5.0, 40.0, 3.0, true);
+                            flake.add_box(pos, 5.0, 40.0, 3.0, State::Gold);
                             // right connector;
                             let pos = XYZ{x: 15.0, y: -25.0, z: -1.5};
-                            flake.add_box(pos, 5.0, 40.0, 3.0, true);
+                            flake.add_box(pos, 5.0, 40.0, 3.0, State::Gold);
                             // other stuff
                             camera = ArcBall::new(Point3::new(-60.0, 60.0, 0.0), Point3::origin());
                             window.render_with_camera(&mut camera);

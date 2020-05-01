@@ -47,6 +47,7 @@ impl Crystal {
         }       
     }
 
+    /// Reset the crystal.
     pub fn clear(&mut self) {
         self.bulk.clear();
         self.surface = SurfaceAtoms::new();
@@ -56,17 +57,21 @@ impl Crystal {
         self.extrema_ijk = ExtremaCoordinates{x_min: CENTER, x_max: CENTER, y_min: CENTER, y_max: CENTER, z_min: CENTER, z_max: CENTER };
     }
 
+    /// Reconstruct the vacancy lists -- needed when lattice has changed.
     pub fn update_vacancies(&mut self) {
         self.vacancies = Vacancies::new();
-        // reconstruct the vacancy lists -- needed as lattice has changed
+
+        // iterate over all atoms in the bulk
         for i in self.bulk.i_min-1..=self.bulk.i_max+1 {
             for j in self.bulk.j_min-1..=self.bulk.j_max+1 {
                 for k in self.bulk.k_min-1..=self.bulk.k_max+1 {
                     let ijk = IJK{i, j, k};
                     if self.bulk.get(ijk, State::Empty) && !self.hidden_atom(ijk) { 
+                        // iterate over the 12 vacancies around an atom
                         for l in 0..12 {
                             let nn_ijk = self.lattice.next_neighbor(ijk,l);
                             if nn_ijk.k > self.substrate_pos && self.bulk.get(nn_ijk, State::Empty) { 
+                                // calc coordiation number and write the position to the associated list
                                 match self.number_of_neighbors(nn_ijk) {
                                     1 => { self.vacancies.list[0].insert(nn_ijk); },
                                     x if x>1 && x<9 => {
@@ -83,25 +88,34 @@ impl Crystal {
         }
     }
 
-    pub fn next_prob_list(&mut self) {
+    /// switch to the next propability list
+    pub fn next_prob_list(&mut self) {     
         self.prob_list_num = (self.prob_list_num + 1).rem_euclid(PROB_LIST.len());
         self.prob_list = PROB_LIST[self.prob_list_num];
         self.prob_list_log = self.prob_list.iter().map(|&el| (10.0*el as f32).log10() as i8 -1).collect::<Vec<i8>>();
         // println!("new prob_list {:?}: 10^{:2?} = {:13?}", self.prob_list_num, self.prob_list_log, self.prob_list);
     }
 
+    /// Add a gold atom to the crystal.
     pub fn add_atom(&mut self, ijk: IJK) -> bool {
+
+        // check if anything is already at the position
         if self.bulk.get(ijk, State::Empty) {
+            // update bulk an surface
             self.bulk.set(ijk,State::Gold);
             self.surface.add(ijk);
             self.update_extrema(ijk);
+            // update vacancy lists
             self.vacancies.recursive_remove(ijk, 0);
             for l in 0..12 {
+                // iterate over each of the 12 vacancies around an atom
                 let nn_ijk = self.lattice.next_neighbor(ijk,l);
+                // check if vacancy is within the boundaries
                 if nn_ijk.i > 1 && nn_ijk.i < FLAKE_MAX.i - 2 
                     && nn_ijk.j > 1 && nn_ijk.j < FLAKE_MAX.j - 2
                     && nn_ijk.k > self.substrate_pos && nn_ijk.k < FLAKE_MAX.k - 2
                     && self.bulk.get(nn_ijk, State::Empty) { 
+                        // calc coordiation number and write the position to the associated list
                         match self.number_of_neighbors(nn_ijk) {
                             1 => { self.vacancies.list[0].insert(nn_ijk); },
                             x if x>1 && x<9 => {
@@ -111,36 +125,44 @@ impl Crystal {
                             _=> { }
                         }
                 }
+                // check if vacancy is now an atom
                 else {
                     if self.hidden_atom(nn_ijk) {
                         self.surface.remove(nn_ijk)
                     }
                 }
             }
-            true
-        }
+            true        // atom added
+        } 
         else { 
-            false 
+            false       // no atom added
         }
     }
 
+    /// Add a dirt atom to the crystal.
     pub fn add_dirt(&mut self, ijk: IJK) -> bool {
+
+        // check if anything is already at the position
         if self.bulk.get(ijk, State::Empty) {
+            // update bulk, surface and vacancy lists
             self.bulk.set(ijk,State::Dirt);
             self.dirt.add(ijk);
             self.update_extrema(ijk);
             self.vacancies.recursive_remove(ijk, 0);
-            true
+
+            true        // atom added
         }
         else { 
-            false 
+            false       // no atom added
         }
     }
 
+    /// Check if an atom is hidden inside the bulk, i.e. not at the surface.
     fn hidden_atom(&self, ijk: IJK) -> bool {
         self.number_of_neighbors(ijk) == 12
     }
 
+    /// Calc the number of neigboring gold atoms for a given position.
     fn number_of_neighbors(&self, ijk: IJK) -> usize {
         let mut number = 0;
         for l in 0..12 {
@@ -152,24 +174,24 @@ impl Crystal {
         number
     }
 
+    /// Pick a random vacancy (which can then be added to the bulk via add_atom).
     pub fn random_vacancy(&self) -> IJK {
+
+        // set up a weighted probability list (prob_sum)
         let mut probabilities = Vec::<usize>::new();
         let mut prob_sum = Vec::<usize>::new();
         for (index,list) in self.vacancies.list.iter().enumerate(){
             probabilities.push(self.prob_list[index]*list.len());
             prob_sum.push(probabilities.iter().sum());
         }
-        // println!("prob: {:?}", probabilities);
-        // println!("prob: {:?}", prob_sum);
+
+        // chose a random list
         let mut random_number: usize = 0;
         if let Some(number) = prob_sum.last() { 
             if *number > 0 { random_number = rand::thread_rng().gen_range(0, *number) as usize }
         };
-        // println!("The random number is: {}", random_number);
         let mut chosen_list: usize = 0;
         if let Some(pos) = prob_sum.iter().position(|&x| x >= random_number) { chosen_list = pos; }
-        // println!("position: {}", chosen_list);
-        // println!("prob: {:?}", vacancies.list[chosen_list]);
 
         // pick random atom from the chosen list
         match self.vacancies.list[chosen_list].iter().choose(&mut rand::thread_rng()) {
@@ -186,19 +208,29 @@ impl Crystal {
         // }       
     }
 
+
+    /// A slightly faster version of random_vacancy + add_atom
+    /// -- useful for adding large amounts of atoms at once.
     pub fn random_add(&mut self, number_of_atoms: usize) {
+
+        // init some often used variables
         let mut random_number: usize = 0;
         let mut probabilities = Vec::<usize>::new();
         let mut prob_sum = Vec::<usize>::new();
-
         // let mut small_rng = rand::rngs::SmallRng::from_rng(&mut rand::thread_rng()).unwrap();    // is not faster than thread_rng
+
+        // loop to add multiple atoms
         for _index in 0..number_of_atoms {
+
+            // set up a weighted probability list (prob_sum)
             probabilities.clear();
             prob_sum.clear();
-            for (index,list) in self.vacancies.list.iter().enumerate(){
+            for (index, list) in self.vacancies.list.iter().enumerate(){
                 probabilities.push(self.prob_list[index]*list.len());
                 prob_sum.push(probabilities.iter().sum());
             }
+            
+            // get random position in probability list -- again, SmallRng was not faster here
             if let Some(number) = prob_sum.last() { 
                 if *number > 0 { random_number = rand::thread_rng().gen_range(0, *number) as usize }
             };
@@ -251,6 +283,7 @@ impl Crystal {
     }
 
     
+    /// Update the extrama positions and coordinates of the crystal.
     pub fn update_extrema(&mut self, ijk: IJK) {
         let xyz = self.lattice.get_xyz(ijk);
         if xyz.x < self.extrema.x_min {
@@ -281,6 +314,7 @@ impl Crystal {
     }
 
 
+    /// Calculate height, width, depth and aspect ratio of the crystal.
     pub fn get_size(&self) -> [f32;4] {
         let h = (self.extrema.z_max-self.extrema.z_min) + DIAMETER;
         let w = (self.extrema.x_max-self.extrema.x_min) + DIAMETER;
@@ -290,21 +324,50 @@ impl Crystal {
     }
 
 
+    /// Calculate the coordinates of a hexagon spanned by the extrema.
+    pub fn get_hexagon(&self) -> [f32;12] {
+
+        // left side
+        let x_min = self.extrema_ijk.x_min;
+        let delta1 = self.extrema_ijk.y_max.j as isize - self.extrema_ijk.x_min.j as isize;
+        let delta2 = self.extrema_ijk.x_min.j as isize - self.extrema_ijk.y_min.j as isize;
+        let a = self.lattice.get_xyz(IJK{i: x_min.i, j: (x_min.j as isize + delta1) as u16, k: x_min.k});
+        let b = self.lattice.get_xyz(self.extrema_ijk.x_min);
+        let c = self.lattice.get_xyz(IJK{i: (x_min.i as isize + delta2) as u16, j: (x_min.j as isize - delta2) as u16, k: x_min.k});
+
+        //right side
+        let x_max = self.extrema_ijk.x_max;
+        let delta3 = self.extrema_ijk.y_min.j as isize - self.extrema_ijk.x_max.j as isize;
+        let delta4 = self.extrema_ijk.x_max.j as isize - self.extrema_ijk.y_max.j as isize;
+        let d = self.lattice.get_xyz(IJK{i: x_max.i, j: (x_max.j as isize + delta3) as u16, k: x_max.k});
+        let e = self.lattice.get_xyz(self.extrema_ijk.x_max);
+        let f = self.lattice.get_xyz(IJK{i: (x_max.i as isize + delta4) as u16, j: (x_max.j as isize - delta4) as u16, k: x_max.k});
+
+        // output of the xy coordinates
+        [a.x,a.y, b.x,b.y, c.x,c.y, d.x,d.y, e.x,e.y, f.x,f.y]
+    }
+
+
+    /// Add a gold/dirt layer to the crystal.
     pub fn add_layer(&mut self, ijk: IJK, layer_size: u16, state: State) {
-        let IJK{i,j,k} = ijk;
-        // moved to CENTER to not obtain negative numbers
-        let i_min: u16 = CENTER.i - layer_size +1;
-        let i_max: u16 = CENTER.i + layer_size;
-        let j_min: u16 = CENTER.j - layer_size +1;
-        let j_max: u16 = CENTER.j + layer_size;
+        
+        // iterate over all positions in the range
+        let i_min: u16 = ijk.i - layer_size +1;
+        let i_max: u16 = ijk.i + layer_size;
+        let j_min: u16 = ijk.j - layer_size +1;
+        let j_max: u16 = ijk.j + layer_size;
         for is in i_min..i_max {
             for js in j_min..j_max {
-                if is+js >= (i_min + CENTER.i) && is+js < (i_max + CENTER.i) {
-                    let ijk = IJK{i: is + i - CENTER.i, j: js + j - CENTER.j, k};
+
+                // check if in hexagonal shape
+                if is+js >= (i_min + ijk.j) && is+js < (i_max + ijk.j) {
+                    let iter_ijk = IJK{i: is, j: js, k: ijk.k};
+
+                    // add depending on the state
                     match state {
                         State::Empty => {}
-                        State::Gold  => {self.add_atom(ijk);},
-                        State::Dirt  => {self.add_dirt(ijk);},
+                        State::Gold  => {self.add_atom(iter_ijk);},
+                        State::Dirt  => {self.add_dirt(iter_ijk);},
                     }
                 }
     
@@ -312,25 +375,38 @@ impl Crystal {
         }
     }
 
-    pub fn add_box(&mut self, center: XYZ, width: f32, depth: f32, height: f32, gold: bool) {
+
+    /// Add a cuboid filled with gold/dirt.
+    pub fn add_box(&mut self, center: XYZ, width: f32, depth: f32, height: f32, state: State) {
+
+        // calc some parameters first
         let min = XYZ{x: center.x - width/2.0, y: center.y - depth/2.0, z: center.z - height/2.0};
         let max = XYZ{x: center.x + width/2.0, y: center.y + depth/2.0, z: center.z + height/2.0};
         let min_ijk = self.lattice.get_ijk(min);
         let max_ijk = self.lattice.get_ijk(max);
+
+        // some heuristics to always cover all positions (The fcc lattic is not cartesian!)
         let delta_i = (max_ijk.i as isize - min_ijk.i as isize).abs();
         let delta_j = (max_ijk.j as isize - min_ijk.j as isize).abs();
         let delta_k = (max_ijk.k as isize - min_ijk.k as isize).abs();
-        let delta = (delta_k/2* std::cmp::max(delta_i, delta_j)) as u16; // some heuristics
+        let delta = (delta_k/2* std::cmp::max(delta_i, delta_j)) as u16;                    
+
+        // iter over all possible positions
         for i in (min_ijk.i - delta)..(max_ijk.i + delta) {
             for j in  (min_ijk.j - delta)..(max_ijk.j + delta) {
                 for k in  (min_ijk.k - 1)..(max_ijk.k + 1) {
-                    let ijk = IJK{i,j,k};
-                    let pos = self.lattice.get_xyz(ijk);
-                    if min.x < pos.x && pos.x < max.x 
-                        && min.y < pos.y && pos.y < max.y
-                            && min.z < pos.z && pos.z < max.z {
-                                if gold { self.add_atom(ijk); }
-                                else { self.add_dirt(ijk); }
+
+                    // check if within box
+                    let iter_ijk = IJK{i,j,k};
+                    let pos = self.lattice.get_xyz(iter_ijk);
+                    if min.x < pos.x && pos.x < max.x       && min.y < pos.y && pos.y < max.y       && min.z < pos.z && pos.z < max.z {
+
+                        // add depending on the state
+                        match state {
+                            State::Empty => {}
+                            State::Gold  => {self.add_atom(iter_ijk);},
+                            State::Dirt  => {self.add_dirt(iter_ijk);},
+                        }
                     }
     
                 }
@@ -338,39 +414,59 @@ impl Crystal {
         }
     }
 
+    /// Add a sphere filled with gold.
     pub fn add_sphere(&mut self, center: XYZ, radius: f32) {
+
+        // calc some parameters first
         let min = XYZ{x: center.x - radius, y: center.y - radius, z: center.z - radius}; 
         let max = XYZ{x: center.x + radius, y: center.y + radius, z: center.z + radius}; 
         let min_ijk = self.lattice.get_ijk(min);
         let max_ijk = self.lattice.get_ijk(max);
+
+        // some heuristics again
         let delta = 2* std::cmp::max((max_ijk.i as isize - min_ijk.i as isize).abs(), (max_ijk.j as isize - min_ijk.j as isize).abs()) as u16;
+
+        // iter over all possible positions
         for i in (min_ijk.i - delta)..(max_ijk.i + delta) {
             for j in  (min_ijk.j - delta)..(max_ijk.j + delta) {
                 for k in  (min_ijk.k - 1)..(max_ijk.k + 1) {
-                    let ijk = IJK{i,j,k};
-                    let pos = self.lattice.get_xyz(ijk);
+
+                    // check if within sphere and add
+                    let iter_ijk = IJK{i,j,k};
+                    let pos = self.lattice.get_xyz(iter_ijk);
                     let distance = ( (pos.x - center.x).powi(2) + (pos.y - center.y).powi(2) + (pos.z - center.z).powi(2) ).sqrt();
                     if distance < radius {
-                        self.add_atom(ijk);
+                        self.add_atom(iter_ijk);
                     }   
                 }
             }
         }
     }
 
+    /// Add an octant (1/8th) of sphere filled with gold.
     pub fn add_sphere_corner(&mut self, center: XYZ, radius: f32, octant: u8) {
+        
+        // calc some parameters first
         let min = XYZ{x: center.x - radius, y: center.y - radius, z: center.z - radius}; 
         let max = XYZ{x: center.x + radius, y: center.y + radius, z: center.z + radius}; 
         let min_ijk = self.lattice.get_ijk(min);
         let max_ijk = self.lattice.get_ijk(max);
+
+        // some heuristics again
         let delta = 2* std::cmp::max((max_ijk.i as isize - min_ijk.i as isize).abs(), (max_ijk.j as isize - min_ijk.j as isize).abs()) as u16;
+
+        // iter over all possible positions
         for i in (min_ijk.i - delta)..(max_ijk.i + delta) {
             for j in  (min_ijk.j - delta)..(max_ijk.j + delta) {
                 for k in  (min_ijk.k - 1)..(max_ijk.k + 1) {
+                    
+                    // check if within sphere
                     let ijk = IJK{i,j,k};
                     let pos = self.lattice.get_xyz(ijk);
                     let pos = XYZ{x: pos.x - center.x, y: pos.y - center.y, z: pos.z - center.z};
                     let distance = ( (pos.x).powi(2) + (pos.y).powi(2) + (pos.z).powi(2) ).sqrt();
+
+                    // check if in chosen octant and add
                     match octant {
                         0 => if pos.x >= 0.0 && pos.y >= 0.0 && pos.z >= 0.0 && distance < radius {
                             self.add_atom(ijk);
@@ -404,23 +500,65 @@ impl Crystal {
         }
     }
 
+    
+    /// Add a cylinder filled with gold.
+    pub fn add_cylinder(&mut self, center: XYZ, length: f32, radius: f32) {
+        
+        // calc some parameters first
+        let min = XYZ{x: center.x - length/2.0, y: center.y - radius, z: center.z - radius}; 
+        let max = XYZ{x: center.x + length/2.0, y: center.y + radius, z: center.z + radius}; 
+        let min_ijk = self.lattice.get_ijk(min);
+        let max_ijk = self.lattice.get_ijk(max);
+
+        // some heuristics again
+        let delta = 2* std::cmp::max((max_ijk.i as isize - min_ijk.i as isize).abs(), (max_ijk.j as isize - min_ijk.j as isize).abs()) as u16;
+        
+        // iter over all possible positions
+        for i in (min_ijk.i - delta)..(max_ijk.i + delta) {
+            for j in  (min_ijk.j - delta)..(max_ijk.j + delta) {
+                for k in  (min_ijk.k - 1)..(max_ijk.k + 1) {
+                    
+                    // check if within cylinder and add
+                    let ijk = IJK{i,j,k};
+                    let pos = self.lattice.get_xyz(ijk);
+                    let pos = XYZ{x: pos.x - center.x, y: pos.y - center.y, z: pos.z - center.z};
+                    let distance = ( (pos.y).powi(2) + (pos.z).powi(2) ).sqrt();
+                    if -length/2.0 < pos.x && pos.x < length/2.0 && distance < radius {
+                        self.add_atom(ijk);
+                    }   
+                }
+            }
+        }
+    }
+
+    /// Add a duodecant (1/12th) of a cylinder filled with gold.
     pub fn add_cylinder_corner(&mut self, center: XYZ, length: f32, radius: f32, duodecant: u8) {
+        
+        // calc some parameters first
         let dist = if  length/2.0 > radius {length/2.0}
                    else {radius};
         let min = XYZ{x: center.x - dist, y: center.y - dist, z: center.z - dist}; 
         let max = XYZ{x: center.x + dist, y: center.y + dist, z: center.z + dist}; 
         let min_ijk = self.lattice.get_ijk(min);
         let max_ijk = self.lattice.get_ijk(max);
+
+        // some heuristics again
         let delta_i = (max_ijk.i as isize - min_ijk.i as isize).abs();
         let delta_j = (max_ijk.j as isize - min_ijk.j as isize).abs();
         let delta_k = (max_ijk.k as isize - min_ijk.k as isize).abs();
-        let delta = (delta_k/2* std::cmp::max(delta_i, delta_j)) as u16; // some heuristics
+        let delta = (delta_k/2* std::cmp::max(delta_i, delta_j)) as u16; 
+
+        // iter over all possible positions
         for i in (min_ijk.i - delta)..(max_ijk.i + delta) {
             for j in  (min_ijk.j - delta)..(max_ijk.j + delta) {
                 for k in  (min_ijk.k - 1)..(max_ijk.k + 1) {
+
+                    // check if within cylinder
                     let ijk = IJK{i,j,k};
                     let pos = self.lattice.get_xyz(ijk);
                     let pos = XYZ{x: pos.x - center.x, y: pos.y - center.y, z: pos.z - center.z};
+                    
+                    // check if in duodecant 0-3; 8-11 and add -- duodecants 4-7 are handled separately to due speed issues
                     match duodecant {
                         0 => {
                             let distance = ( (pos.y).powi(2) + (pos.z).powi(2) ).sqrt();
@@ -476,14 +614,21 @@ impl Crystal {
                 }
             }
         }
-        // handled separately to due speed issues
-        let delta = (delta_k/10* std::cmp::max(delta_i, delta_j)) as u16; // some heuristics 2
+
+        // different heuristics for duodecant 4-7
+        let delta = (delta_k/10* std::cmp::max(delta_i, delta_j)) as u16; 
+        
+        // iter over all possible positions
         for i in (min_ijk.i - delta)..(max_ijk.i + delta) {
             for j in  (min_ijk.j - delta)..(max_ijk.j + delta) {
                 for k in  (min_ijk.k - 1)..(max_ijk.k + 1) {
+                    
+                    // check if within cylinder
                     let ijk = IJK{i,j,k};
                     let pos = self.lattice.get_xyz(ijk);
                     let pos = XYZ{x: pos.x - center.x, y: pos.y - center.y, z: pos.z - center.z};
+                    
+                    // check if in duodecant 4-7 and add
                     match duodecant {
                         4 => {
                             let distance = ( (pos.z).powi(2) + (pos.x).powi(2) ).sqrt();
@@ -517,34 +662,17 @@ impl Crystal {
         }
     }
 
-    pub fn add_cylinder(&mut self, center: XYZ, length: f32, radius: f32) {
-        let min = XYZ{x: center.x - length/2.0, y: center.y - radius, z: center.z - radius}; 
-        let max = XYZ{x: center.x + length/2.0, y: center.y + radius, z: center.z + radius}; 
-        let min_ijk = self.lattice.get_ijk(min);
-        let max_ijk = self.lattice.get_ijk(max);
-        let delta = 2* std::cmp::max((max_ijk.i as isize - min_ijk.i as isize).abs(), (max_ijk.j as isize - min_ijk.j as isize).abs()) as u16;
-        for i in (min_ijk.i - delta)..(max_ijk.i + delta) {
-            for j in  (min_ijk.j - delta)..(max_ijk.j + delta) {
-                for k in  (min_ijk.k - 1)..(max_ijk.k + 1) {
-                    let ijk = IJK{i,j,k};
-                    let pos = self.lattice.get_xyz(ijk);
-                    let pos = XYZ{x: pos.x - center.x, y: pos.y - center.y, z: pos.z - center.z};
-                    let distance = ( (pos.y).powi(2) + (pos.z).powi(2) ).sqrt();
-                    if -length/2.0 < pos.x && pos.x < length/2.0 && distance < radius {
-                        self.add_atom(ijk);
-                    }   
-                }
-            }
-        }
-    }
-
+    
+    /// Add a at the top rounded box filled with gold. 
     pub fn add_rounded_box(&mut self, center: XYZ, width: f32, depth: f32, height: f32, radius: f32) {
-        // let radius = depth;
+
+        // some helper variable
         let inner_x = width/2.0 - radius;
         let inner_y = depth/2.0 - radius;
         let inner_z = height - radius;
         let outer_x = inner_x + radius/2.0;
         let outer_y = inner_y + radius/2.0;
+
         // upper corners
         let pos = XYZ{x: center.x - inner_x, y: center.y + inner_y, z: center.z + inner_z};
         self.add_sphere_corner(pos, radius, 1);
@@ -554,7 +682,7 @@ impl Crystal {
         self.add_sphere_corner(pos, radius, 0);
         let pos = XYZ{x: center.x + inner_x, y: center.y - inner_y, z: center.z + inner_z};
         self.add_sphere_corner(pos, radius, 2);  
-        // println!("corners done");
+        
         // upper rounded edges
         let pos = XYZ{x: center.x - inner_x, y: center.y + 0.0,     z: center.z + inner_z};
         self.add_cylinder_corner(pos, 2.0*inner_y, radius, 6);       
@@ -564,21 +692,21 @@ impl Crystal {
         self.add_cylinder_corner(pos, 2.0*inner_x, radius, 1);
         let pos = XYZ{x: center.x + inner_x, y: center.y + 0.0,     z: center.z + inner_z};
         self.add_cylinder_corner(pos, 2.0*inner_y, radius, 4); 
-        // println!("top edges done");
+
         // central box
         let pos = XYZ{x: center.x + 0.0,     y: center.y + 0.0,     z: center.z + height/2.0};
-        self.add_box(pos, 2.0*inner_x, 2.0*inner_y, height, true);
-        // println!("central box done");
+        self.add_box(pos, 2.0*inner_x, 2.0*inner_y, height, State::Gold);
+
         // side boxes
         let pos = XYZ{x: center.x + 0.0,     y: center.y + outer_y, z: center.z + inner_z/2.0};
-        self.add_box(pos, 2.0*inner_x, radius, inner_z, true);
+        self.add_box(pos, 2.0*inner_x, radius, inner_z, State::Gold);
         let pos = XYZ{x: center.x + 0.0,     y: center.y - outer_y, z: center.z + inner_z/2.0};
-        self.add_box(pos, 2.0*inner_x, radius, inner_z, true);
+        self.add_box(pos, 2.0*inner_x, radius, inner_z, State::Gold);
         let pos = XYZ{x: center.x + outer_x, y: center.y + 0.0,     z: center.z + inner_z/2.0};
-        self.add_box(pos, radius, 2.0*inner_y, inner_z, true);
+        self.add_box(pos, radius, 2.0*inner_y, inner_z, State::Gold);
         let pos = XYZ{x: center.x - outer_x, y: center.y + 0.0,     z: center.z + inner_z/2.0};
-        self.add_box(pos, radius, 2.0*inner_y, inner_z, true);
-        // println!("side boxes done");
+        self.add_box(pos, radius, 2.0*inner_y, inner_z, State::Gold);
+
         // side rounded edges
         let pos = XYZ{x: center.x + inner_x, y: center.y + inner_y, z: center.z + inner_z/2.0};
         self.add_cylinder_corner(pos, inner_z, radius, 8);  
@@ -588,28 +716,16 @@ impl Crystal {
         self.add_cylinder_corner(pos, inner_z, radius, 9);  
         let pos = XYZ{x: center.x - inner_x, y: center.y - inner_y, z: center.z + inner_z/2.0};
         self.add_cylinder_corner(pos, inner_z, radius, 11); 
-        // println!("side edges done");
     }
 
-    pub fn get_hexagon(&self) -> [f32;12] {
-        let x_min = self.extrema_ijk.x_min;
-        let delta1 = self.extrema_ijk.y_max.j as isize - self.extrema_ijk.x_min.j as isize;
-        let delta2 = self.extrema_ijk.x_min.j as isize - self.extrema_ijk.y_min.j as isize;
-        let a = self.lattice.get_xyz(IJK{i: x_min.i, j: (x_min.j as isize + delta1) as u16, k: x_min.k});
-        let b = self.lattice.get_xyz(self.extrema_ijk.x_min);
-        let c = self.lattice.get_xyz(IJK{i: (x_min.i as isize + delta2) as u16, j: (x_min.j as isize - delta2) as u16, k: x_min.k});
-        let x_max = self.extrema_ijk.x_max;
-        let delta3 = self.extrema_ijk.y_min.j as isize - self.extrema_ijk.x_max.j as isize;
-        let delta4 = self.extrema_ijk.x_max.j as isize - self.extrema_ijk.y_max.j as isize;
-        let d = self.lattice.get_xyz(IJK{i: x_max.i, j: (x_max.j as isize + delta3) as u16, k: x_max.k});
-        let e = self.lattice.get_xyz(self.extrema_ijk.x_max);
-        let f = self.lattice.get_xyz(IJK{i: (x_max.i as isize + delta4) as u16, j: (x_max.j as isize - delta4) as u16, k: x_max.k});
-        [a.x,a.y, b.x,b.y, c.x,c.y, d.x,d.y, e.x,e.y, f.x,f.y]
-    }
 
+
+    /// This is the statistics module.
+    /// Parameters like the stacking positions, substrate + probabilities can be change at runtime,
+    /// and most of the other important ones at compile time via the paramters.rs.
     pub fn statistics(&mut self) -> usize {
+
         // create file and write header
-        // let filename = format!("{}_cycles{}_steps{}_p{}_substrate{}_stacking{:?}.csv", FILENAME, NUMBER_OF_CYCLES, STOP_MARKS.len(), self.prob_list_num + 1, self.substrate_pos ,self.lattice.stacking_faults);
         let filename = format!("{}_sub{}_stack{:?}_cycles{}_steps{}_p{}.csv", FILENAME, self.substrate_pos ,self.lattice.stacking_faults, NUMBER_OF_CYCLES, STOP_MARKS.len(), self.prob_list_num + 1);
         let mut f = File::create(filename).expect("Unable to create file"); 
         write!(f, "substrate: {} stacking: {:?} cycles: {} steps {} prob_list_log p{} -- {:?}\n", self.substrate_pos ,self.lattice.stacking_faults, NUMBER_OF_CYCLES, STOP_MARKS.len(), self.prob_list_num + 1, self.prob_list_log).expect("Unable to write in file");
@@ -625,16 +741,20 @@ impl Crystal {
         // repeate the flake growth for several cycles
         let mut added_atoms: usize = 0;
         for i in 0..NUMBER_OF_CYCLES {
+
             // prepare the same zero conditions for every cycle
             added_atoms = 0;
             self.clear();
             self.add_atom(CENTER);
+
             // start the growth
             println!("{}/{}", i+1 , NUMBER_OF_CYCLES);
             for add_atoms in atoms_to_add.iter() {
+
                 // the growth
                 self.random_add(*add_atoms);
-                // update the variables and print them / write the to the file
+                
+                // update the variables and print them / write them to the file
                 added_atoms += add_atoms;
                 let [..,r] = &self.get_size();
                 let [ax,ay,bx,by,cx,cy,..] = self.get_hexagon();
@@ -651,6 +771,7 @@ impl Crystal {
         }
 
         println!(" ...finished");
+
         // for presentation purposes return the number of atoms of the last iteration 
         added_atoms
     }

@@ -63,7 +63,7 @@ impl Bulk {
         // save value
         // read data into a virtual register
         let mut register = self.storage[[ijk.i as usize, ijk.j as usize, (ijk.k/DIV) as usize]];
-        // update the right bits in the byte/word/longword or whatever will be usec in the end
+        // update the right bits in the byte/word/longword or whatever will be used in the end
         let pos = ijk.k%DIV;                                                           // calculate the position
         let change = value.wrapping_shl((pos*BITS) as u32);                             // move bit to the right position
         let bitmask = !self.unit.wrapping_shl((pos*BITS) as u32);                       // construct a bitmask for the same position
@@ -71,7 +71,7 @@ impl Bulk {
         self.storage[[ijk.i as usize, ijk.j as usize, (ijk.k/DIV) as usize]] = register;    // write data back  
         
         // update extrema
-       if value > 0 {   
+        if value > 0 {   
             self.number_of_atoms += 1;      
             if ijk.i < self.i_min { self.i_min = ijk.i }
             if ijk.i > self.i_max { self.i_max = ijk.i }
