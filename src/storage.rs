@@ -1,3 +1,16 @@
+/*!
+ The storage back end of the crystal struct.
+
+The **storage struct** provides:
+* Bulk: A lean 3D storage for the state (empty, gold or dirt) of each position of the crystal which e.g. can hold 10.8 billion positions within 2.5GB.
+* SurfaceAtoms: A list which holds all atom positions of the surface atoms.
+* Vacancies: A list of lists of the positions of all vacancies depending on their coordination number.
+
+Bulk is implemented via an ndarray, its size is (so far) predefined at compile time but it actually does "dynammically" use the memory due to the advantegeous handling of zeroed pages by the OS :-)
+
+SurfaceAtoms and Vacancies utilize a BTreeSet datastructure to quickly find (random) locations within them.
+*/
+
 use std::collections::BTreeSet;
 use ndarray::{Array3};
 
@@ -26,7 +39,7 @@ pub struct Bulk {
 impl Bulk {
     pub fn new() -> Self {
         let storage = Array3::<u8>::zeros((FLAKE_MAX.i as usize, FLAKE_MAX.j as usize, (FLAKE_MAX.k/DIV + 1) as usize));   
-        println!("Array shape {:?}", storage.shape());                     
+        println!("Array shape {:?} with DIV {:?}", storage.shape(), DIV);                     
         Bulk { 
             storage, 
             unit: (2u16.pow(BITS as u32) - 1) as u8,                         // needed for the bitmask further down and should only be calculated once
@@ -41,15 +54,32 @@ impl Bulk {
     }
 
     pub fn clear(&mut self) {
-        for i in self.i_min..=self.i_max {
-            for j in self.j_min..=self.j_max {
-                for k in self.k_min..=self.k_max {
-                    let ijk = IJK{i, j, k};
-                    self.set(ijk, State::Empty);
-                }
-            }
-        }
+        // To reset the storage we have two possibilities:
+        // The quick one seems to need twice the memory size very briefly during allocation:
+        self.storage = Array3::<u8>::zeros((0, 0, 0));                                  // This is the solution to free the memory, first!
+        self.storage = Array3::<u8>::zeros((FLAKE_MAX.i as usize, FLAKE_MAX.j as usize, (FLAKE_MAX.k/DIV + 1) as usize)); 
+
+        // And the second one is safer but takes longer:
+        // for i in self.i_min..=self.i_max {
+        //     for j in self.j_min..=self.j_max {
+        //         for k in self.k_min..=self.k_max {
+        //             let ijk = IJK{i, j, k};
+        //             self.set(ijk, State::Empty);
+        //         }
+        //     }
+        // }
+        // However be careful with the second method, too: As some memory pages are already touched the real memory usage will be non-zero at the beginning.
+        // And it seems to be a tiny bit slower to grow flakes afterwards. Possible explanation: As each flake has a slightly different shape it will also use a
+        // slightly different memory region and together with the already touched (but now unused) pages the overall memory size is larger. And this makes
+        // some memory handling slower.
+
         self.number_of_atoms = 0;
+        self.i_min = CENTER.i;
+        self.i_max = CENTER.i; 
+        self.j_min = CENTER.j; 
+        self.j_max = CENTER.j; 
+        self.k_min = CENTER.k; 
+        self.k_max = CENTER.k;
     }
 
     pub fn set(&mut self, ijk: IJK, state: State) {

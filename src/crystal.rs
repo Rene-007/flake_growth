@@ -1,3 +1,16 @@
+/*!
+The buisness logic of the flake growth program.
+
+It utilizes the Storage back end and provides basic methods in the Crystal struct for:
+* adding single gold or dirt atoms
+* randomly selecting vacancy which may be turned into a new surface atom
+* and for adding many random atoms at once in an optimized way.
+
+It furthermore provides some basic shapes (layers, spheres, cylinders, boxes and rounded boxes) prefilled with atoms as a starting point, a bunch of helpers (get extremas, hexagaon approximation, size) and a statistics "module".
+
+*/
+
+
 use rand::Rng;
 use rand::seq::IteratorRandom;
 
@@ -88,7 +101,7 @@ impl Crystal {
         }
     }
 
-    /// switch to the next propability list
+    /// Switch to the next propability list.
     pub fn next_prob_list(&mut self) {     
         self.prob_list_num = (self.prob_list_num + 1).rem_euclid(PROB_LIST.len());
         self.prob_list = PROB_LIST[self.prob_list_num];
@@ -101,21 +114,27 @@ impl Crystal {
 
         // check if anything is already at the position
         if self.bulk.get(ijk, State::Empty) {
+
             // update bulk an surface
             self.bulk.set(ijk,State::Gold);
             self.surface.add(ijk);
             self.update_extrema(ijk);
+
             // update vacancy lists
+            // first remove the now occupied position
             self.vacancies.recursive_remove(ijk, 0);
-            for l in 0..12 {
-                // iterate over each of the 12 vacancies around an atom
+            
+            // iterate over each of the 12 position around the added atom
+            for l in 0..12 {                            
+                
+                // check if it is a vacancy and within the boundaries
                 let nn_ijk = self.lattice.next_neighbor(ijk,l);
-                // check if vacancy is within the boundaries
                 if nn_ijk.i > 1 && nn_ijk.i < FLAKE_MAX.i - 2 
                     && nn_ijk.j > 1 && nn_ijk.j < FLAKE_MAX.j - 2
                     && nn_ijk.k > self.substrate_pos && nn_ijk.k < FLAKE_MAX.k - 2
                     && self.bulk.get(nn_ijk, State::Empty) { 
-                        // calc coordiation number and write the position to the associated list
+
+                        // calc coordiation number of the vacancy and write the position to the associated list
                         match self.number_of_neighbors(nn_ijk) {
                             1 => { self.vacancies.list[0].insert(nn_ijk); },
                             x if x>1 && x<9 => {
@@ -125,7 +144,8 @@ impl Crystal {
                             _=> { }
                         }
                 }
-                // check if vacancy is now an atom
+                
+                // if at the position is not a vacancy but a now-hidden atom then remove it from the surface atoms list
                 else {
                     if self.hidden_atom(nn_ijk) {
                         self.surface.remove(nn_ijk)
@@ -144,6 +164,7 @@ impl Crystal {
 
         // check if anything is already at the position
         if self.bulk.get(ijk, State::Empty) {
+
             // update bulk, surface and vacancy lists
             self.bulk.set(ijk,State::Dirt);
             self.dirt.add(ijk);
@@ -772,7 +793,7 @@ impl Crystal {
 
         println!(" ...finished");
 
-        // for presentation purposes return the number of atoms of the last iteration 
+        // for presentation purposes: return the number of atoms of the last iteration 
         added_atoms
     }
 
