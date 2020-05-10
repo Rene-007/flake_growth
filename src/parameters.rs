@@ -1,32 +1,32 @@
 use crate::helpers::*;
 
-// Using u16 instead of usize for IJK reduces the computation time by ~40%!
-// u16 means 2^16 = 65_536 => flakes length of > 20µm allowed. 
-//
-// surprisingly, going down from u16 to u8 for "k" increases the time by ~40% again!
-// the arragement (ijk vs kij vs kji) doesn't really make a difference
-//
-
 // Maximal (static) size of the flake 
 pub const BITS: u16 = 2;
 pub const DIV: u16 = 8 / BITS;
-// pub const FLAKE_MAX: IJK = IJK{i:10, j:10, k:10};          // much larger values do not fit inside the stack during initialization -- see crystal.rs 
-pub const FLAKE_MAX: IJK = IJK{i:6000, j:6000, k:300};          // much larger values do not fit inside the stack during initialization -- see crystal.rs 
+
+#[cfg(not(target_arch = "wasm32"))]
+// pub const FLAKE_MAX: IJK = IJK{i:6000, j:6000, k:300};          // this uses 2.7B (virtual) memory and means 2x2um^2 x 100nm
+pub const FLAKE_MAX: IJK = IJK{i:12000, j:12000, k:600};     // this uses 20GB (virtual) memory and means 4x4um^2 x 200nm (sometimes slower)
+
+#[cfg(target_arch = "wasm32")]
+pub const FLAKE_MAX: IJK = IJK{i:2000, j:2000, k:300};          // wasm is 32bit so this is the limit
+
 // and resulting center location of the flake -- Don't change!
 pub const CENTER: IJK = IJK{i: FLAKE_MAX.i/2, j: FLAKE_MAX.j/2, k: FLAKE_MAX.k/2};
 
 // Stacking faults arrangement -- Shouldn't be larger than FLAKE.MAX.k
-pub const STACKING_FAULTS: [u16; 0] = [];
+// pub const STACKING_FAULTS: [u16; 0] = [];
 // pub const STACKING_FAULTS: [u16; 1] = [CENTER.k];
-// pub const STACKING_FAULTS: [u16; 2] = [CENTER.k-2, CENTER.k+2];
+pub const STACKING_FAULTS: [u16; 2] = [CENTER.k-2, CENTER.k+2];
 // pub const STACKING_FAULTS: [u16; 3] = [CENTER.k-3, CENTER.k, CENTER.k+3];
 // pub const STACKING_FAULTS: [u16; 4] = [CENTER.k-3, CENTER.k, CENTER.k+6, CENTER.k+8];
 
 // Number of used vacancy kinds
 pub const VAC_LISTS: usize = 9;
 // and associated probabilities of their interaction
-pub const PROB_LIST_NUM: usize = 2;                                                
-pub const PROB_LIST: [[usize; VAC_LISTS]; 4] = [[0, 0, 1, 1_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1000_000_000],
+pub const PROB_LIST_NUM: usize = 2;    
+// u64 is needed for wasm to work (usize is there only u32)                                            
+pub const PROB_LIST: [[u64; VAC_LISTS]; 4] = [[0, 0, 1, 1_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 1000_000_000],
                                                 [0, 0, 1, 1_000, 1_000_000, 1_000_000_000, 10_000_000_000, 100_000_000_000, 1_000_000_000_000],
                                                 [0, 0, 1, 10_000, 100_000_000, 1_000_000_000_000, 1_000_000_000_000, 1_000_000_000_000, 1_000_000_000_000],
                                                 [0, 0, 1, 100_000, 1_000_000_000, 1_000_000_000_000, 1_000_000_000_000, 1_000_000_000_000, 1_000_000_000_000]];

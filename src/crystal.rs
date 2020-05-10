@@ -22,6 +22,8 @@ use crate::parameters::*;
 use crate::lattice::*;
 use crate::storage::*;
 
+#[cfg(target_arch = "wasm32")]
+use crate::println;
 
 #[derive(Copy,Clone,Debug)]
 pub struct Extrema {pub x_min: f32, pub x_max: f32, pub y_min: f32, pub y_max: f32, pub z_min: f32, pub z_max: f32 }
@@ -31,7 +33,7 @@ pub struct ExtremaCoordinates{pub x_min: IJK, pub x_max: IJK, pub y_min: IJK, pu
 pub struct Crystal {
     pub lattice: Lattice,
     pub prob_list_num: usize,
-    pub prob_list: [usize; VAC_LISTS],
+    pub prob_list: [u64; VAC_LISTS],
     pub prob_list_log: Vec<i8>,
     pub bulk: Bulk,
     pub surface: SurfaceAtoms,
@@ -79,11 +81,11 @@ impl Crystal {
             for j in self.bulk.j_min-1..=self.bulk.j_max+1 {
                 for k in self.bulk.k_min-1..=self.bulk.k_max+1 {
                     let ijk = IJK{i, j, k};
-                    if self.bulk.get(ijk, State::Empty) && !self.hidden_atom(ijk) { 
+                    if self.bulk.get(ijk, Atom::Empty) && !self.hidden_atom(ijk) { 
                         // iterate over the 12 vacancies around an atom
                         for l in 0..12 {
                             let nn_ijk = self.lattice.next_neighbor(ijk,l);
-                            if nn_ijk.k > self.substrate_pos && self.bulk.get(nn_ijk, State::Empty) { 
+                            if nn_ijk.k > self.substrate_pos && self.bulk.get(nn_ijk, Atom::Empty) { 
                                 // calc coordiation number and write the position to the associated list
                                 match self.number_of_neighbors(nn_ijk) {
                                     1 => { self.vacancies.list[0].insert(nn_ijk); },
@@ -113,10 +115,10 @@ impl Crystal {
     pub fn add_atom(&mut self, ijk: IJK) -> bool {
 
         // check if anything is already at the position
-        if self.bulk.get(ijk, State::Empty) {
+        if self.bulk.get(ijk, Atom::Empty) {
 
             // update bulk an surface
-            self.bulk.set(ijk,State::Gold);
+            self.bulk.set(ijk,Atom::Gold);
             self.surface.add(ijk);
             self.update_extrema(ijk);
 
@@ -132,7 +134,7 @@ impl Crystal {
                 if nn_ijk.i > 1 && nn_ijk.i < FLAKE_MAX.i - 2 
                     && nn_ijk.j > 1 && nn_ijk.j < FLAKE_MAX.j - 2
                     && nn_ijk.k > self.substrate_pos && nn_ijk.k < FLAKE_MAX.k - 2
-                    && self.bulk.get(nn_ijk, State::Empty) { 
+                    && self.bulk.get(nn_ijk, Atom::Empty) { 
 
                         // calc coordiation number of the vacancy and write the position to the associated list
                         match self.number_of_neighbors(nn_ijk) {
@@ -163,10 +165,10 @@ impl Crystal {
     pub fn add_dirt(&mut self, ijk: IJK) -> bool {
 
         // check if anything is already at the position
-        if self.bulk.get(ijk, State::Empty) {
+        if self.bulk.get(ijk, Atom::Empty) {
 
             // update bulk, surface and vacancy lists
-            self.bulk.set(ijk,State::Dirt);
+            self.bulk.set(ijk,Atom::Dirt);
             self.dirt.add(ijk);
             self.update_extrema(ijk);
             self.vacancies.recursive_remove(ijk, 0);
@@ -188,7 +190,7 @@ impl Crystal {
         let mut number = 0;
         for l in 0..12 {
             let nn_ijk = self.lattice.next_neighbor(ijk, l);
-            if self.bulk.get(nn_ijk, State::Gold) {
+            if self.bulk.get(nn_ijk, Atom::Gold) {
                 number += 1;
             }
         }
@@ -199,17 +201,17 @@ impl Crystal {
     pub fn random_vacancy(&self) -> IJK {
 
         // set up a weighted probability list (prob_sum)
-        let mut probabilities = Vec::<usize>::new();
-        let mut prob_sum = Vec::<usize>::new();
+        let mut probabilities = Vec::<u64>::new();
+        let mut prob_sum = Vec::<u64>::new();
         for (index,list) in self.vacancies.list.iter().enumerate(){
-            probabilities.push(self.prob_list[index]*list.len());
+            probabilities.push(self.prob_list[index]*list.len() as u64);
             prob_sum.push(probabilities.iter().sum());
         }
 
         // chose a random list
-        let mut random_number: usize = 0;
+        let mut random_number: u64 = 0;
         if let Some(number) = prob_sum.last() { 
-            if *number > 0 { random_number = rand::thread_rng().gen_range(0, *number) as usize }
+            if *number > 0 { random_number = rand::thread_rng().gen_range(0, *number) as u64 }
         };
         let mut chosen_list: usize = 0;
         if let Some(pos) = prob_sum.iter().position(|&x| x >= random_number) { chosen_list = pos; }
@@ -235,9 +237,9 @@ impl Crystal {
     pub fn random_add(&mut self, number_of_atoms: usize) {
 
         // init some often used variables
-        let mut random_number: usize = 0;
-        let mut probabilities = Vec::<usize>::new();
-        let mut prob_sum = Vec::<usize>::new();
+        let mut random_number: u64 = 0;
+        let mut probabilities = Vec::<u64>::new();
+        let mut prob_sum = Vec::<u64>::new();
         // let mut small_rng = rand::rngs::SmallRng::from_rng(&mut rand::thread_rng()).unwrap();    // is not faster than thread_rng
 
         // loop to add multiple atoms
@@ -247,13 +249,13 @@ impl Crystal {
             probabilities.clear();
             prob_sum.clear();
             for (index, list) in self.vacancies.list.iter().enumerate(){
-                probabilities.push(self.prob_list[index]*list.len());
+                probabilities.push(self.prob_list[index]*list.len() as u64);
                 prob_sum.push(probabilities.iter().sum());
             }
             
             // get random position in probability list -- again, SmallRng was not faster here
             if let Some(number) = prob_sum.last() { 
-                if *number > 0 { random_number = rand::thread_rng().gen_range(0, *number) as usize }
+                if *number > 0 { random_number = rand::thread_rng().gen_range(0, *number) as u64 }
             };
 
             // chose a list
@@ -264,7 +266,7 @@ impl Crystal {
                     self.vacancies.list[chosen_list].take(&ijk);
                     
                     // at to bulk and upgrade numbers
-                    self.bulk.set(ijk,State::Gold);
+                    self.bulk.set(ijk,Atom::Gold);
                     self.update_extrema(ijk);
                     
                     // update vacancies lists
@@ -273,7 +275,7 @@ impl Crystal {
                         if nn_ijk.i > 1 && nn_ijk.i < FLAKE_MAX.i - 2 
                             && nn_ijk.j > 1 && nn_ijk.j < FLAKE_MAX.j - 2
                             && nn_ijk.k > self.substrate_pos && nn_ijk.k < FLAKE_MAX.k - 2
-                            && self.bulk.get(nn_ijk, State::Empty) { 
+                            && self.bulk.get(nn_ijk, Atom::Empty) { 
                                 match self.number_of_neighbors(nn_ijk) {
                                     1 => { self.vacancies.list[0].insert(nn_ijk); },
                                     x if x>1 && x<9 => {
@@ -287,17 +289,17 @@ impl Crystal {
                 }
             }
         }   
-
+        
         // reconstruct the surface list -- it is much faster to do this only once at the end
         self.surface.list.clear();
         for i in self.bulk.i_min..=self.bulk.i_max {
             for j in self.bulk.j_min..=self.bulk.j_max {
                 for k in self.bulk.k_min..=self.bulk.k_max {
                     let ijk = IJK{i, j, k};
-                    if self.bulk.get(ijk, State::Gold) && !self.hidden_atom(ijk) {             
+                    if self.bulk.get(ijk, Atom::Gold) && !self.hidden_atom(ijk) {             
                         self.surface.add(ijk)
                     }
-
+                    
                 }
             }
         }
@@ -370,7 +372,7 @@ impl Crystal {
 
 
     /// Add a gold/dirt layer to the crystal.
-    pub fn add_layer(&mut self, ijk: IJK, layer_size: u16, state: State) {
+    pub fn add_layer(&mut self, ijk: IJK, layer_size: u16, atom: Atom) {
         
         // iterate over all positions in the range
         let i_min: u16 = ijk.i - layer_size +1;
@@ -384,11 +386,11 @@ impl Crystal {
                 if is+js >= (i_min + ijk.j) && is+js < (i_max + ijk.j) {
                     let iter_ijk = IJK{i: is, j: js, k: ijk.k};
 
-                    // add depending on the state
-                    match state {
-                        State::Empty => {}
-                        State::Gold  => {self.add_atom(iter_ijk);},
-                        State::Dirt  => {self.add_dirt(iter_ijk);},
+                    // add depending on the atom
+                    match atom {
+                        Atom::Empty => {}
+                        Atom::Gold  => {self.add_atom(iter_ijk);},
+                        Atom::Dirt  => {self.add_dirt(iter_ijk);},
                     }
                 }
     
@@ -398,7 +400,7 @@ impl Crystal {
 
 
     /// Add a cuboid filled with gold/dirt.
-    pub fn add_box(&mut self, center: XYZ, width: f32, depth: f32, height: f32, state: State) {
+    pub fn add_box(&mut self, center: XYZ, width: f32, depth: f32, height: f32, atom: Atom) {
 
         // calc some parameters first
         let min = XYZ{x: center.x - width/2.0, y: center.y - depth/2.0, z: center.z - height/2.0};
@@ -422,11 +424,11 @@ impl Crystal {
                     let pos = self.lattice.get_xyz(iter_ijk);
                     if min.x < pos.x && pos.x < max.x       && min.y < pos.y && pos.y < max.y       && min.z < pos.z && pos.z < max.z {
 
-                        // add depending on the state
-                        match state {
-                            State::Empty => {}
-                            State::Gold  => {self.add_atom(iter_ijk);},
-                            State::Dirt  => {self.add_dirt(iter_ijk);},
+                        // add depending on the atom
+                        match atom {
+                            Atom::Empty => {}
+                            Atom::Gold  => {self.add_atom(iter_ijk);},
+                            Atom::Dirt  => {self.add_dirt(iter_ijk);},
                         }
                     }
     
@@ -716,17 +718,17 @@ impl Crystal {
 
         // central box
         let pos = XYZ{x: center.x + 0.0,     y: center.y + 0.0,     z: center.z + height/2.0};
-        self.add_box(pos, 2.0*inner_x, 2.0*inner_y, height, State::Gold);
+        self.add_box(pos, 2.0*inner_x, 2.0*inner_y, height, Atom::Gold);
 
         // side boxes
         let pos = XYZ{x: center.x + 0.0,     y: center.y + outer_y, z: center.z + inner_z/2.0};
-        self.add_box(pos, 2.0*inner_x, radius, inner_z, State::Gold);
+        self.add_box(pos, 2.0*inner_x, radius, inner_z, Atom::Gold);
         let pos = XYZ{x: center.x + 0.0,     y: center.y - outer_y, z: center.z + inner_z/2.0};
-        self.add_box(pos, 2.0*inner_x, radius, inner_z, State::Gold);
+        self.add_box(pos, 2.0*inner_x, radius, inner_z, Atom::Gold);
         let pos = XYZ{x: center.x + outer_x, y: center.y + 0.0,     z: center.z + inner_z/2.0};
-        self.add_box(pos, radius, 2.0*inner_y, inner_z, State::Gold);
+        self.add_box(pos, radius, 2.0*inner_y, inner_z, Atom::Gold);
         let pos = XYZ{x: center.x - outer_x, y: center.y + 0.0,     z: center.z + inner_z/2.0};
-        self.add_box(pos, radius, 2.0*inner_y, inner_z, State::Gold);
+        self.add_box(pos, radius, 2.0*inner_y, inner_z, Atom::Gold);
 
         // side rounded edges
         let pos = XYZ{x: center.x + inner_x, y: center.y + inner_y, z: center.z + inner_z/2.0};
@@ -798,4 +800,3 @@ impl Crystal {
     }
 
 }
-

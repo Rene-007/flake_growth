@@ -2,6 +2,7 @@ use nalgebra::Translation3;
 use crate::helpers::*;
 use crate::parameters::*;
 
+
 #[derive(Copy,Clone,Debug)]
 pub struct XYZ {pub x: f32, pub y: f32, pub z: f32}
 
@@ -110,10 +111,10 @@ impl Stackings {
         // set the central position to zero
         let kzero = pos[CENTER.k as usize];
         pos.iter_mut().for_each(|el| *el -= kzero);
-        // FLAKE_MAX.k must be <= 32 for the following println's to work
-        // println!("Stacking pos     {:?}", pos);
-        // println!("Stacking shift_i {:?}", shift_i);
-        // println!("Stacking shift_j {:?}", shift_j);
+        // FLAKE_MAX.k must be <= 32 for the following dbg's to work
+        // dbg!("Stacking pos     {:?}", pos);
+        // dbg!("Stacking shift_i {:?}", shift_i);
+        // dbg!("Stacking shift_j {:?}", shift_j);
         
         Stackings { 
             shift_i, 

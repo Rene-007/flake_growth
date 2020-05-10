@@ -12,6 +12,9 @@ use crate::parameters::*;
 use crate::lattice::*;
 use crate::crystal::*;
 
+// #[cfg(target_arch = "wasm32")]
+// use crate::println;
+
 
 pub struct ShowSceneNode {pub surface: bool, pub dirt: bool, pub vacancies: bool, pub current: bool, pub wireframe: bool, pub hexagon: bool, pub substrate: bool }
 

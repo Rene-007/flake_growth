@@ -2,7 +2,7 @@
  The storage back end of the crystal struct.
 
 The **storage struct** provides:
-* Bulk: A lean 3D storage for the state (empty, gold or dirt) of each position of the crystal which e.g. can hold 10.8 billion positions within 2.5GB.
+* Bulk: A lean 3D storage for the atom (empty, gold or dirt) of each position of the crystal which e.g. can hold 10.8 billion positions within 2.5GB.
 * SurfaceAtoms: A list which holds all atom positions of the surface atoms.
 * Vacancies: A list of lists of the positions of all vacancies depending on their coordination number.
 
@@ -17,7 +17,10 @@ use ndarray::{Array3};
 use crate::helpers::*;
 use crate::parameters::*;
 
-pub enum State {
+#[cfg(target_arch = "wasm32")]
+use crate::println;
+
+pub enum Atom {
     Empty,
     Gold,
     Dirt,
@@ -56,7 +59,7 @@ impl Bulk {
     pub fn clear(&mut self) {
         // To reset the storage we have two possibilities:
         // The quick one seems to need twice the memory size very briefly during allocation:
-        self.storage = Array3::<u8>::zeros((0, 0, 0));                                  // This is the solution to free the memory, first!
+        self.storage = Array3::<u8>::zeros((0, 0, 0));                                  // This is the solution for freeing the memory, first!
         self.storage = Array3::<u8>::zeros((FLAKE_MAX.i as usize, FLAKE_MAX.j as usize, (FLAKE_MAX.k/DIV + 1) as usize)); 
 
         // And the second one is safer but takes longer:
@@ -64,7 +67,7 @@ impl Bulk {
         //     for j in self.j_min..=self.j_max {
         //         for k in self.k_min..=self.k_max {
         //             let ijk = IJK{i, j, k};
-        //             self.set(ijk, State::Empty);
+        //             self.set(ijk, Atom::Empty);
         //         }
         //     }
         // }
@@ -82,12 +85,12 @@ impl Bulk {
         self.k_max = CENTER.k;
     }
 
-    pub fn set(&mut self, ijk: IJK, state: State) {
+    pub fn set(&mut self, ijk: IJK, atom: Atom) {
         // translate enum to value
-        let value: u8 = match state {
-            State::Empty    => {0},
-            State::Gold     => {1},
-            State::Dirt     => {2}
+        let value: u8 = match atom {
+            Atom::Empty    => {0},
+            Atom::Gold     => {1},
+            Atom::Dirt     => {2}
         };
 
         // save value
@@ -112,15 +115,15 @@ impl Bulk {
         }
     }
 
-    pub fn get(&self, ijk: IJK, state: State) -> bool {
+    pub fn get(&self, ijk: IJK, atom: Atom) -> bool {
         let value = self.storage[[ijk.i as usize, ijk.j as usize, (ijk.k/DIV)  as usize]]; 
         let pos = ijk.k%DIV;                                                           // calculate position in byte/word/longword or whatever we will use in the end
         let value = value.wrapping_shr((pos*BITS) as u32) & self.unit;                  // select the right bits
 
-        match state {
-            State::Empty    => {value == 0},
-            State::Gold     => {value == 1},
-            State::Dirt     => {value == 2},
+        match atom {
+            Atom::Empty    => {value == 0},
+            Atom::Gold     => {value == 1},
+            Atom::Dirt     => {value == 2},
         }
     }
 
