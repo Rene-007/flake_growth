@@ -2,6 +2,6 @@
 **/*.rs.bk
 
 
-!/target/
-!/target/deploy/
-!/target/deploy/**
+# !/target/
+# !/target/deploy/
+# !/target/deploy/**
