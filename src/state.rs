@@ -58,7 +58,7 @@ impl AppState {
         let new_atom = true;                               
 
         // helpers for simplifying the event handling of the keys
-        let add_random_atoms: usize = 0;
+        let add_random_atoms: usize = 100;
         let show_hide_vacancy: usize = 0;
         let show_process = true;
         AppState{

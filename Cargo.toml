@@ -1,6 +1,6 @@
 [package]
 name = "flake_growth"
-version = "0.30.0"
+version = "0.40.0"
 authors = ["René Kullock"]
 edition = "2018"
 
