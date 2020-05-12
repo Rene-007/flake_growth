@@ -38,7 +38,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn init(window: &mut Window) -> Self {
+    pub fn new(window: &mut Window) -> Self {
         // init lattice and flake  
         let lattice = Lattice::new(STACKING_FAULTS.to_vec(), DIAMETER);
         let flake = Crystal::new(lattice.clone());
@@ -58,7 +58,7 @@ impl AppState {
         let new_atom = true;                               
 
         // helpers for simplifying the event handling of the keys
-        let add_random_atoms: usize = 100;
+        let add_random_atoms: usize = 3000;
         let show_hide_vacancy: usize = 0;
         let show_process = true;
         AppState{
@@ -76,6 +76,243 @@ impl AppState {
             show_process,
         }
     }
+
+    pub fn back(&mut self, window: &mut Window) {
+        self.flake.clear();
+        self.i = CENTER.i;           // with "let IJK{i,j,k} = ijk" the scope just here
+        self.j = CENTER.j;  
+        self.k = CENTER.k;
+        if self.flake.add_atom(IJK{i: self.i, j: self.j, k:self.k}) { 
+            self.scene.update_surface(window, &self.flake);
+            self.scene.update_dirt(window, &self.flake);
+            self.scene.update_vacancies(window, &self.flake, false);
+        }
+    }
+
+    pub fn show_hide_help(&mut self) {
+        self.overlay.show_help = !self.overlay.show_help;
+        self.overlay.help.set_visible(self.overlay.show_help);
+    }
+
+    pub fn show_hide_indicators(&mut self) {
+        self.overlay.show = !self.overlay.show;
+        self.overlay.scene.set_visible(self.overlay.show);
+        self.overlay.layers.set_visible(self.overlay.show);
+    }
+
+    pub fn highlight_current_atom(&mut self, window: &mut Window) {
+        if self.scene.show.current {
+            window.remove_node(&mut self.scene.current);
+        }
+        else
+        {
+            self.scene.current = window.add_group();
+            add_atom_to_group(&mut self.scene.current, &self.lattice.position(IJK{i: self.i, j: self.j, k:self.k}), Color(1.0, 0.0, 0.0));
+
+        }
+        self.scene.show.current = !self.scene.show.current;
+    }
+
+    pub fn show_hide_gold(&mut self, window: &mut Window) {
+        if self.scene.show.surface {
+            // window.remove(&mut self.scene.surface);
+            window.remove_node(&mut self.scene.surface);
+            self.scene.surface.set_visible(false);
+        }
+        else {   
+            self.scene.surface = window.add_group();
+            if self.scene.visual_layers {
+                // for ijk in self.flake.surface.list.clone() {
+                //     add_atom_to_group(
+                //         &mut self.scene.surface, &self.lattice.position(ijk), ATOM_COLORS[(self.lattice.stacking.pos[ijk.k as usize].rem_euclid(3)) as usize])    
+                // }
+                self.flake.surface.list.clone().iter().for_each(|&ijk| add_atom_to_group(
+                    &mut self.scene.surface, &self.lattice.position(ijk), ATOM_COLORS[(self.lattice.stacking.pos[ijk.k as usize].rem_euclid(3)) as usize])
+                );   
+            }
+            else {
+                self.flake.surface.list.clone().iter().for_each(|&ijk| add_atom_to_group(&mut self.scene.surface, &self.lattice.position(ijk), GOLD) );
+
+            }
+            self.scene.surface.set_visible(true);
+        }
+        self.scene.show.surface = !self.scene.show.surface;
+    }
+
+    pub fn show_hide_dirt(&mut self, window: &mut Window) {
+        if self.scene.show.dirt {
+            window.remove_node(&mut self.scene.dirt);
+            self.scene.dirt.set_visible(false);
+        }
+        else {   
+            self.scene.dirt = window.add_group();
+            self.flake.dirt.list.clone().iter().for_each(|&ijk| add_atom_to_group(&mut self.scene.dirt, &self.lattice.position(ijk), DIRT) );
+            self.scene.dirt.set_visible(true);
+        }
+        self.scene.show.dirt = !self.scene.show.dirt;
+    }
+
+    pub fn visualize_stacking(&mut self, window: &mut Window) {
+        self.scene.visual_layers = !self.scene.visual_layers;
+        self.scene.update_surface(window, &self.flake);
+    }
+
+    pub fn show_hide_wireframe(&mut self) {
+        self.scene.show.wireframe = !self.scene.show.wireframe;
+        self.scene.wireframe.set_visible(self.scene.show.wireframe);
+    }
+
+    pub fn show_hide_hexagon(&mut self) {
+        self.scene.show.hexagon = !self.scene.show.hexagon;
+        self.scene.hexagon.set_visible(self.scene.show.hexagon);
+    }
+
+    pub fn show_hide_substrate(&mut self) {
+        self.scene.show.substrate = !self.scene.show.substrate;
+        self.scene.substrate.set_visible(self.scene.show.substrate);
+    }
+
+    pub fn add_gold_layer(&mut self, window: &mut Window) {
+        self.flake.add_layer(IJK{i: self.i, j: self.j, k:self.k}, 7, Atom::Gold);
+        self.scene.update_surface(window, &self.flake);
+        self.scene.update_vacancies(window, &self.flake, false);
+    }
+
+    pub fn add_dirt_layer(&mut self, window: &mut Window) {
+        self.flake.add_layer(IJK{i: self.i, j: self.j, k: self.flake.extrema_ijk.z_max.k+1}, 7, Atom::Dirt);
+        self.scene.update_dirt(window, &self.flake);
+        self.scene.update_vacancies(window, &self.flake, false);
+    }
+
+    pub fn add_sphere(&mut self, window: &mut Window) {
+        self.flake.clear();
+        let pos = XYZ{x: 0.0, y: 0.0, z: 0.0};
+        self.flake.add_sphere(pos, 5.0);
+        self.camera = ArcBall::new(Point3::new(-45.0, 22.5, 0.0), Point3::origin());
+        self.scene.update_surface(window, &self.flake);
+        self.scene.update_vacancies(window, &self.flake, false);
+    }
+
+    pub fn add_cylinder(&mut self, window: &mut Window) {
+        self.flake.clear();
+        let pos = XYZ{x: 0.0, y: 0.0, z: 0.0};
+        self.flake.add_cylinder(pos, 20.0, 5.0);
+        self.camera = ArcBall::new(Point3::new(-45.0, 22.5, 0.0), Point3::origin());
+        self.scene.update_surface(window, &self.flake);
+        self.scene.update_vacancies(window, &self.flake, false);
+    }
+
+    pub fn add_rounded_monomer_antenna(&mut self, window: &mut Window) {
+        self.flake.clear();
+        // antenna arm
+        let pos = XYZ{x: 0.0, y: 0.0, z: -3.0};
+        self.flake.add_rounded_box(pos, 20.0, 10.0, 6.0, 3.0);
+        // other stuff
+        self.camera = ArcBall::new(Point3::new(-45.0, 22.5, 0.0), Point3::origin());
+        self.scene.update_surface(window, &self.flake);
+        self.scene.update_vacancies(window, &self.flake, false);
+    }
+
+    pub fn add_dipole_antenna(&mut self, window: &mut Window) {
+        self.flake.clear();
+        // left arm
+        let pos = XYZ{x: -15.0, y: 0.0, z: 0.0};
+        self.flake.add_box(pos, 20.0, 10.0, 6.0, Atom::Gold);
+        // left arm scond level
+        let pos = XYZ{x: -15.0, y: 0.0, z: 3.5};
+        self.flake.add_box(pos, 18.0, 8.0, 1.0, Atom::Gold);
+        // right arm
+        let pos = XYZ{x: 15.0, y: 0.0, z: 0.0};
+        self.flake.add_box(pos, 20.0, 10.0, 6.0, Atom::Gold);
+        // other stuff
+        self.camera = ArcBall::new(Point3::new(-45.0, 22.5, 0.0), Point3::origin());
+        self.scene.update_surface(window, &self.flake);
+        self.scene.update_vacancies(window, &self.flake, false);
+    }
+
+    pub fn add_rounded_dipole_antenna(&mut self, window: &mut Window) {
+        self.flake.clear();
+        // left arm
+        let pos = XYZ{x: -15.0, y: 0.0, z: -3.0};
+        self.flake.add_rounded_box(pos, 20.0, 10.0, 6.0, 3.0);
+        // right arm
+         let pos = XYZ{x: 15.0, y: 0.0, z: -3.0};
+        self.flake.add_rounded_box(pos, 20.0, 10.0, 7.0, 3.5);
+        // other stuff
+        self.camera = ArcBall::new(Point3::new(-45.0, 22.5, 0.0), Point3::origin());
+        self.scene.update_surface(window, &self.flake);
+        self.scene.update_vacancies(window, &self.flake, false);
+    }
+
+    pub fn add_jord_antenna(&mut self, window: &mut Window) {
+        self.flake.clear();
+        // left arm
+        let pos = XYZ{x: -15.0, y: 0.0, z: 0.0};
+        self.flake.add_box(pos, 20.0, 10.0, 6.0, Atom::Gold);
+        // right arm
+        let pos = XYZ{x: 15.0, y: 0.0, z: 0.0};
+        self.flake.add_box(pos, 20.0, 10.0, 6.0, Atom::Gold);
+        // left connector;
+        let pos = XYZ{x: -15.0, y: 25.0, z: -1.5};
+        self.flake.add_box(pos, 5.0, 40.0, 3.0, Atom::Gold);
+        // right connector;
+        let pos = XYZ{x: 15.0, y: -25.0, z: -1.5};
+        self.flake.add_box(pos, 5.0, 40.0, 3.0, Atom::Gold);
+        // other stuff
+        self.camera = ArcBall::new(Point3::new(-60.0, 60.0, 0.0), Point3::origin());
+        self.scene.update_surface(window, &self.flake);
+        self.scene.update_vacancies(window, &self.flake, false);
+    }
+
+    pub fn add_rounded_jord_antenna(&mut self, window: &mut Window) {
+        self.flake.clear();
+        // left arm
+        let pos = XYZ{x: -14.0, y: 0.0, z: -3.0};
+        self.flake.add_rounded_box(pos, 20.0, 10.0, 6.0, 3.0);
+        // right arm
+        let pos = XYZ{x: 14.0, y: 0.0, z: -3.0};
+        self.flake.add_rounded_box(pos, 20.0, 10.0, 6.0, 3.0);
+        // left connector
+        let pos = XYZ{x: -14.0, y: 25.0, z: -3.0};
+        self.flake.add_rounded_box(pos, 5.0, 42.0, 3.0, 2.0);
+        // right connector
+        let pos = XYZ{x: 14.0, y: -25.0, z: -3.0};
+        self.flake.add_rounded_box(pos, 5.0, 42.0, 3.0, 2.0);
+        // left protector
+        let pos = XYZ{x: -14.0, y: 25.0, z: -1.5};
+        self.flake.add_box(pos, 6.0, 44.0, 4.0, Atom::Dirt);
+        // right protector
+        let pos = XYZ{x: 14.0, y: -25.0, z: -1.5};
+        self.flake.add_box(pos, 6.0, 44.0, 4.0, Atom::Dirt);
+        // waist for the left arm
+        let pos = XYZ{x: -14.0, y: 0.0, z: 0.0};
+        self.flake.add_box(pos, 10.0, 12.0, 7.0, Atom::Dirt);
+        // other stuff
+        self.camera = ArcBall::new(Point3::new(-60.0, 60.0, 0.0), Point3::origin());
+        self.scene.update_surface(window, &self.flake);
+        self.scene.update_dirt(window, &self.flake);
+        self.scene.update_vacancies(window, &self.flake, false);
+    }
+
+    pub fn add_substrate(&mut self, window: &mut Window) {
+        if self.flake.substrate_pos == 1 {
+            self.flake.substrate_pos = self.flake.extrema_ijk.z_min.k - 1;
+            self.flake.update_vacancies();
+            self.scene.update_vacancies(window, &self.flake, false);
+            self.scene.add_substrate(&mut self.flake);
+            self.scene.show.substrate = true;
+            self.scene.substrate.set_visible(self.scene.show.substrate);
+            println!("Substrate added at: {:?}", self.flake.substrate_pos);
+        }
+        else  {
+            self.flake.substrate_pos = 1;
+            self.flake.update_vacancies();
+            self.scene.show.substrate = false;
+            self.scene.substrate.set_visible(self.scene.show.substrate);
+        }
+    }
+
+
 }
 
 impl State for AppState {
@@ -105,251 +342,30 @@ impl State for AppState {
                 WindowEvent::Key(key, Action::Press, _) => {     
                     match key { 
                         // special actions
-                        Key::Back => {     // back to start
-                            self.flake.clear();
-                            self.i = CENTER.i;           // with "let IJK{i,j,k} = ijk" the scope just here
-                            self.j = CENTER.j;  
-                            self.k = CENTER.k;
-                            if self.flake.add_atom(IJK{i: self.i, j: self.j, k:self.k}) { 
-                                self.scene.update_surface(window, &self.flake);
-                                self.scene.update_dirt(window, &self.flake);
-                                self.scene.update_vacancies(window, &self.flake, false);
-                            }
-                        }                      
+                        Key::Back =>    self.back(window),                          // back to start
                         
                         // interact with (planar) scene
-                        Key::Space => {     // show/hide help
-                            self.overlay.show_help = !self.overlay.show_help;
-                            self.overlay.help.set_visible(self.overlay.show_help);
-                            event.inhibited = true // override the default keyboard handler
-                        }
-                        Key::R => {         // show/hide indicators
-                            self.overlay.show = !self.overlay.show;
-                            self.overlay.scene.set_visible(self.overlay.show);
-                            self.overlay.layers.set_visible(self.overlay.show);
-                            event.inhibited = true // override the default keyboard handler
-                        }
-                        Key::S => {         // highlight current atom
-                            if self.scene.show.current {
-                                window.remove_node(&mut self.scene.current);
-                            }
-                            else
-                            {
-                                self.scene.current = window.add_group();
-                                add_atom_to_group(&mut self.scene.current, &self.lattice.position(IJK{i: self.i, j: self.j, k:self.k}), Color(1.0, 0.0, 0.0));
+                        Key::Space =>   self.show_hide_help(),                      // show/hide help
+                        Key::R =>       self.show_hide_indicators(),                // show/hide indicators
+                        Key::S =>       self.highlight_current_atom(window),        // highlight current atom
+                        Key::G =>       self.show_hide_gold(window),                // show/hide gold atoms
+                        Key::T =>       self.show_hide_dirt(window),                // show/hide dirt atoms
+                        Key::V =>       self.visualize_stacking(window),            // visualize layers on/off 
+                        Key::B =>       self.show_hide_wireframe(),                 // show/hide wireframe (box)
+                        Key::H =>       self.show_hide_hexagon(),                   // show/hide hexagon
+                        Key::Minus =>   self.show_hide_substrate(),                 // show/hide substrate         
 
-                            }
-                            self.scene.show.current = !self.scene.show.current;
-                            event.inhibited = true // override the default keyboard handler
-                        }
-                        Key::G => {         // show/hide gold atoms
-                            if self.scene.show.surface {
-                                // window.remove(&mut self.scene.surface);
-                                window.remove_node(&mut self.scene.surface);
-                                self.scene.surface.set_visible(false);
-                            }
-                            else {   
-                                self.scene.surface = window.add_group();
-                                if self.scene.visual_layers {
-                                    // for ijk in self.flake.surface.list.clone() {
-                                    //     add_atom_to_group(
-                                    //         &mut self.scene.surface, &self.lattice.position(ijk), ATOM_COLORS[(self.lattice.stacking.pos[ijk.k as usize].rem_euclid(3)) as usize])    
-                                    // }
-                                    self.flake.surface.list.clone().iter().for_each(|&ijk| add_atom_to_group(
-                                        &mut self.scene.surface, &self.lattice.position(ijk), ATOM_COLORS[(self.lattice.stacking.pos[ijk.k as usize].rem_euclid(3)) as usize])
-                                    );   
-                                }
-                                else {
-                                    self.flake.surface.list.clone().iter().for_each(|&ijk| add_atom_to_group(&mut self.scene.surface, &self.lattice.position(ijk), GOLD) );
-
-                                }
-                                self.scene.surface.set_visible(true);
-                            }
-                            self.scene.show.surface = !self.scene.show.surface;
-                            event.inhibited = true // override the default keyboard handler
-                        }  
-                        Key::T => {         // show/hide dirt atoms
-                            if self.scene.show.dirt {
-                                window.remove_node(&mut self.scene.dirt);
-                                self.scene.dirt.set_visible(false);
-                            }
-                            else {   
-                                self.scene.dirt = window.add_group();
-                                self.flake.dirt.list.clone().iter().for_each(|&ijk| add_atom_to_group(&mut self.scene.dirt, &self.lattice.position(ijk), DIRT) );
-                                self.scene.dirt.set_visible(true);
-                            }
-                            self.scene.show.dirt = !self.scene.show.dirt;
-                            event.inhibited = true // override the default keyboard handler
-                        }  
-                        Key::V => {         // visualize layers on/off
-                            self.scene.visual_layers = !self.scene.visual_layers;
-                            self.scene.update_surface(window, &self.flake);
-                            event.inhibited = true // override the default keyboard handler
-                        }  
-                        Key::B => {         // show/hide wireframe (box)
-                            self.scene.show.wireframe = !self.scene.show.wireframe;
-                            self.scene.wireframe.set_visible(self.scene.show.wireframe);
-                            event.inhibited = true // override the default keyboard handler
-                        }  
-                        Key::H => {         // show/hide hexagon
-                            self.scene.show.hexagon = !self.scene.show.hexagon;
-                            self.scene.hexagon.set_visible(self.scene.show.hexagon);
-                            event.inhibited = true // override the default keyboard handler
-                        }  
-                        
                         // add some special geometries
-                        Key::L => {         // add layer
-                            self.flake.add_layer(IJK{i: self.i, j: self.j, k:self.k}, 7, Atom::Gold);
-                            self.scene.update_surface(window, &self.flake);
-                            self.scene.update_vacancies(window, &self.flake, false);
-                            event.inhibited = true // override the default keyboard handler
-                        } 
-                        Key::O => {         // add dirt layer on top
-                            self.flake.add_layer(IJK{i: self.i, j: self.j, k: self.flake.extrema_ijk.z_max.k+1}, 7, Atom::Dirt);
-                            self.scene.update_dirt(window, &self.flake);
-                            self.scene.update_vacancies(window, &self.flake, false);
-                            event.inhibited = true // override the default keyboard handler
-                        } 
-                        Key::Home => {      // add sphere
-                            self.flake.clear();
-                            // sphere
-                            let pos = XYZ{x: 0.0, y: 0.0, z: 0.0};
-                            self.flake.add_sphere(pos, 5.0);
-                            self.camera = ArcBall::new(Point3::new(-45.0, 22.5, 0.0), Point3::origin());
-                            // window.render_with_camera(&mut self.camera);
-                            self.scene.update_surface(window, &self.flake);
-                            self.scene.update_vacancies(window, &self.flake, false);
-                            event.inhibited = true // override the default keyboard handler  
-                        }     
-                        Key::End => {       // add cylinder
-                            self.flake.clear();
-                            let pos = XYZ{x: 0.0, y: 0.0, z: 0.0};
-                            self.flake.add_cylinder(pos, 20.0, 5.0);
-                            self.camera = ArcBall::new(Point3::new(-45.0, 22.5, 0.0), Point3::origin());
-                            // window.render_with_camera(&mut self.camera);
-                            self.scene.update_surface(window, &self.flake);
-                            self.scene.update_vacancies(window, &self.flake, false);
-                            event.inhibited = true // override the default keyboard handler
-                        }                          
-                        Key::Delete => {    // add rounded monomer antenna
-                            self.flake.clear();
-                            // antenna arm
-                            let pos = XYZ{x: 0.0, y: 0.0, z: -3.0};
-                            self.flake.add_rounded_box(pos, 20.0, 10.0, 6.0, 3.0);
-                            // other stuff
-                            self.camera = ArcBall::new(Point3::new(-45.0, 22.5, 0.0), Point3::origin());
-                            // window.render_with_camera(&mut self.camera);
-                            self.scene.update_surface(window, &self.flake);
-                            self.scene.update_vacancies(window, &self.flake, false);
-                            event.inhibited = true // override the default keyboard handler
-                        }
-                        Key::I => {         // add rounded Dipole antenna
-                            self.flake.clear();
-                            // left arm
-                            let pos = XYZ{x: -15.0, y: 0.0, z: -3.0};
-                            self.flake.add_rounded_box(pos, 20.0, 10.0, 6.0, 3.0);
-                            // right arm
-                             let pos = XYZ{x: 15.0, y: 0.0, z: -3.0};
-                            self.flake.add_rounded_box(pos, 20.0, 10.0, 7.0, 3.5);
-                            // other stuff
-                            self.camera = ArcBall::new(Point3::new(-45.0, 22.5, 0.0), Point3::origin());
-                            // window.render_with_camera(&mut self.camera);
-                            self.scene.update_surface(window, &self.flake);
-                            self.scene.update_vacancies(window, &self.flake, false);
-                            event.inhibited = true // override the default keyboard handler
-                        }                        
-                        Key::K => {         // add Dipole antenna
-                            self.flake.clear();
-                            // left arm
-                            let pos = XYZ{x: -15.0, y: 0.0, z: 0.0};
-                            self.flake.add_box(pos, 20.0, 10.0, 6.0, Atom::Gold);
-                            // left arm scond level
-                            let pos = XYZ{x: -15.0, y: 0.0, z: 3.5};
-                            self.flake.add_box(pos, 18.0, 8.0, 1.0, Atom::Gold);
-                            // right arm
-                            let pos = XYZ{x: 15.0, y: 0.0, z: 0.0};
-                            self.flake.add_box(pos, 20.0, 10.0, 6.0, Atom::Gold);
-                            // other stuff
-                            self.camera = ArcBall::new(Point3::new(-45.0, 22.5, 0.0), Point3::origin());
-                            // window.render_with_camera(&mut self.camera);
-                            self.scene.update_surface(window, &self.flake);
-                            self.scene.update_vacancies(window, &self.flake, false);
-                            event.inhibited = true // override the default keyboard handler
-                        }                        
-                        Key::U => {         // add rounded Jord antenna
-                            self.flake.clear();
-                            // left arm
-                            let pos = XYZ{x: -14.0, y: 0.0, z: -3.0};
-                            self.flake.add_rounded_box(pos, 20.0, 10.0, 6.0, 3.0);
-                            // right arm
-                            let pos = XYZ{x: 14.0, y: 0.0, z: -3.0};
-                            self.flake.add_rounded_box(pos, 20.0, 10.0, 6.0, 3.0);
-                            // left connector
-                            let pos = XYZ{x: -14.0, y: 25.0, z: -3.0};
-                            self.flake.add_rounded_box(pos, 5.0, 42.0, 3.0, 2.0);
-                            // right connector
-                            let pos = XYZ{x: 14.0, y: -25.0, z: -3.0};
-                            self.flake.add_rounded_box(pos, 5.0, 42.0, 3.0, 2.0);
-                            // left protector
-                            let pos = XYZ{x: -14.0, y: 25.0, z: -1.5};
-                            self.flake.add_box(pos, 6.0, 44.0, 4.0, Atom::Dirt);
-                            // right protector
-                            let pos = XYZ{x: 14.0, y: -25.0, z: -1.5};
-                            self.flake.add_box(pos, 6.0, 44.0, 4.0, Atom::Dirt);
-                            // waist for the left arm
-                            let pos = XYZ{x: -14.0, y: 0.0, z: 0.0};
-                            self.flake.add_box(pos, 10.0, 12.0, 7.0, Atom::Dirt);
-                            // other stuff
-                            self.camera = ArcBall::new(Point3::new(-60.0, 60.0, 0.0), Point3::origin());
-                            // window.render_with_camera(&mut self.camera);
-                            self.scene.update_surface(window, &self.flake);
-                            self.scene.update_dirt(window, &self.flake);
-                            self.scene.update_vacancies(window, &self.flake, false);
-                            event.inhibited = true // override the default keyboard handler
-                        }
-                        Key::J => {         // add Jord antenna
-                            self.flake.clear();
-                            // left arm
-                            let pos = XYZ{x: -15.0, y: 0.0, z: 0.0};
-                            self.flake.add_box(pos, 20.0, 10.0, 6.0, Atom::Gold);
-                            // right arm
-                            let pos = XYZ{x: 15.0, y: 0.0, z: 0.0};
-                            self.flake.add_box(pos, 20.0, 10.0, 6.0, Atom::Gold);
-                            // left connector;
-                            let pos = XYZ{x: -15.0, y: 25.0, z: -1.5};
-                            self.flake.add_box(pos, 5.0, 40.0, 3.0, Atom::Gold);
-                            // right connector;
-                            let pos = XYZ{x: 15.0, y: -25.0, z: -1.5};
-                            self.flake.add_box(pos, 5.0, 40.0, 3.0, Atom::Gold);
-                            // other stuff
-                            self.camera = ArcBall::new(Point3::new(-60.0, 60.0, 0.0), Point3::origin());
-                            // window.render_with_camera(&mut self.camera);
-                            self.scene.update_surface(window, &self.flake);
-                            self.scene.update_vacancies(window, &self.flake, false);
-                            event.inhibited = true // override the default keyboard handler
-                        }
-                        Key::M => {      // add substrat below lowest vacancies layer
-                            if self.flake.substrate_pos == 1 {
-                                self.flake.substrate_pos = self.flake.extrema_ijk.z_min.k - 1;
-                                self.flake.update_vacancies();
-                                self.scene.update_vacancies(window, &self.flake, false);
-                                self.scene.add_substrate(&mut self.flake);
-                                self.scene.show.substrate = true;
-                                self.scene.substrate.set_visible(self.scene.show.substrate);
-                                println!("Substrate added at: {:?}", self.flake.substrate_pos);
-                            }
-                            else  {
-                                self.flake.substrate_pos = 1;
-                                self.flake.update_vacancies();
-                                self.scene.show.substrate = false;
-                                self.scene.substrate.set_visible(self.scene.show.substrate);
-                            }
-                            event.inhibited = true // override the default keyboard handler
-                        }    
-                        Key::Minus => {
-                            self.scene.show.substrate = !self.scene.show.substrate;
-                            self.scene.substrate.set_visible(self.scene.show.substrate);
-                        }                   
+                        Key::L =>       self.add_gold_layer(window),                // add gold layer
+                        Key::O =>       self.add_dirt_layer(window),                // add dirt layer on top
+                        Key::Home =>    self.add_sphere(window),                    // add sphere     
+                        Key::End =>     self.add_cylinder(window),                  // add cylinder                        
+                        Key::Delete =>  self.add_rounded_monomer_antenna(window),   // add rounded monomer antenna
+                        Key::I =>       self.add_rounded_dipole_antenna(window),    // add rounded Dipole antenna  
+                        Key::K =>       self.add_dipole_antenna(window),            // add Dipole antenna
+                        Key::U =>       self.add_rounded_jord_antenna(window),      // add rounded Jord antenna
+                        Key::J =>       self.add_jord_antenna(window),              // add Jord antenna
+                        Key::M =>       self.add_substrate(window),                 // add substrat below lowest vacancies layer    
                         
                         // tweak stacking
                         Key::Up => {        // reset stacking

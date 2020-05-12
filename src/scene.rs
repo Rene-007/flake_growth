@@ -207,7 +207,7 @@ impl Scene {
         self.hexagon = window.add_group();
         self.add_hexagon(&flake);
         self.hexagon.set_visible(self.show.hexagon);
-        if flake.substrate_pos > 0 {
+        if flake.substrate_pos > 1 {
             window.remove_node(&mut self.substrate);
             self.substrate = window.add_group();
             self.add_substrate(&flake);
