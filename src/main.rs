@@ -1,6 +1,6 @@
 use kiss3d::window::Window;
 
-mod state;          pub use state::*;
+mod world;          pub use world::*;
 mod helpers;        pub use helpers::*;
 mod parameters;     
 mod lattice;        
@@ -12,7 +12,8 @@ mod planar_scene;
 
 fn main() {
     let mut window = Window::new_with_size("Flake Growth", 1600, 900);
-
-    let state = AppState::new(&mut window);
-    window.render_loop(state)
+    
+    let mut world = World::new(&mut window);
+    world.add_random_atoms(&mut window, true, 2_000);
+    window.render_loop(world)
 }
