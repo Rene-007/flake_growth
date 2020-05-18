@@ -398,41 +398,22 @@ impl Crystal {
         }
     }
 
-
     /// Add a cuboid filled with gold/dirt.
     pub fn add_box(&mut self, center: XYZ, width: f32, depth: f32, height: f32, atom: Atom) {
 
-        // calc some parameters first
+        // calc corners of the box first
         let min = XYZ{x: center.x - width/2.0, y: center.y - depth/2.0, z: center.z - height/2.0};
         let max = XYZ{x: center.x + width/2.0, y: center.y + depth/2.0, z: center.z + height/2.0};
-        let min_ijk = self.lattice.get_ijk(min);
-        let max_ijk = self.lattice.get_ijk(max);
 
-        // some heuristics to always cover all positions (The fcc lattic is not cartesian!)
-        let delta_i = (max_ijk.i as isize - min_ijk.i as isize).abs();
-        let delta_j = (max_ijk.j as isize - min_ijk.j as isize).abs();
-        let delta_k = (max_ijk.k as isize - min_ijk.k as isize).abs();
-        let delta = (delta_k/2* std::cmp::max(delta_i, delta_j)) as u16;                    
-
-        // iter over all possible positions
-        for i in (min_ijk.i - delta)..(max_ijk.i + delta) {
-            for j in  (min_ijk.j - delta)..(max_ijk.j + delta) {
-                for k in  (min_ijk.k - 1)..(max_ijk.k + 1) {
-
-                    // check if within box
-                    let iter_ijk = IJK{i,j,k};
-                    let pos = self.lattice.get_xyz(iter_ijk);
-                    if min.x < pos.x && pos.x < max.x       && min.y < pos.y && pos.y < max.y       && min.z < pos.z && pos.z < max.z {
-
-                        // add depending on the atom
-                        match atom {
-                            Atom::Empty => {}
-                            Atom::Gold  => {self.add_atom(iter_ijk);},
-                            Atom::Dirt  => {self.add_dirt(iter_ijk);},
-                        }
-                    }
-    
-                }
+        // iterate over box
+        self.lattice.init_box_iter(min, max);
+        for iter_ijk in self.lattice.clone().into_iter() {
+            
+            // add depending on the atom
+            match atom {
+                Atom::Empty => {}
+                Atom::Gold  => {self.add_atom(iter_ijk);},
+                Atom::Dirt  => {self.add_dirt(iter_ijk);},
             }
         }
     }
@@ -443,27 +424,18 @@ impl Crystal {
         // calc some parameters first
         let min = XYZ{x: center.x - radius, y: center.y - radius, z: center.z - radius}; 
         let max = XYZ{x: center.x + radius, y: center.y + radius, z: center.z + radius}; 
-        let min_ijk = self.lattice.get_ijk(min);
-        let max_ijk = self.lattice.get_ijk(max);
-
-        // some heuristics again
-        let delta = 2* std::cmp::max((max_ijk.i as isize - min_ijk.i as isize).abs(), (max_ijk.j as isize - min_ijk.j as isize).abs()) as u16;
-
-        // iter over all possible positions
-        for i in (min_ijk.i - delta)..(max_ijk.i + delta) {
-            for j in  (min_ijk.j - delta)..(max_ijk.j + delta) {
-                for k in  (min_ijk.k - 1)..(max_ijk.k + 1) {
-
-                    // check if within sphere and add
-                    let iter_ijk = IJK{i,j,k};
-                    let pos = self.lattice.get_xyz(iter_ijk);
-                    let distance = ( (pos.x - center.x).powi(2) + (pos.y - center.y).powi(2) + (pos.z - center.z).powi(2) ).sqrt();
-                    if distance < radius {
-                        self.add_atom(iter_ijk);
-                    }   
-                }
-            }
-        }
+        
+        // iterate over a box
+        self.lattice.init_box_iter(min, max);
+        for iter_ijk in self.lattice.clone().into_iter()  {
+            
+            // check if within sphere and add
+            let pos = self.lattice.get_xyz(iter_ijk);
+            let distance = ( (pos.x - center.x).powi(2) + (pos.y - center.y).powi(2) + (pos.z - center.z).powi(2) ).sqrt();
+            if distance < radius {
+                self.add_atom(iter_ijk);
+            }   
+        }     
     }
 
     /// Add an octant (1/8th) of sphere filled with gold.
@@ -472,54 +444,45 @@ impl Crystal {
         // calc some parameters first
         let min = XYZ{x: center.x - radius, y: center.y - radius, z: center.z - radius}; 
         let max = XYZ{x: center.x + radius, y: center.y + radius, z: center.z + radius}; 
-        let min_ijk = self.lattice.get_ijk(min);
-        let max_ijk = self.lattice.get_ijk(max);
+        
+        // iterate over a box
+        self.lattice.init_box_iter(min, max);
+        for iter_ijk in self.lattice.clone().into_iter()  {
+           
+            // check if within sphere and add
+            let pos = self.lattice.get_xyz(iter_ijk);
+            let pos = XYZ{x: pos.x - center.x, y: pos.y - center.y, z: pos.z - center.z};
+            let distance = ( (pos.x).powi(2) + (pos.y).powi(2) + (pos.z).powi(2) ).sqrt();
 
-        // some heuristics again
-        let delta = 2* std::cmp::max((max_ijk.i as isize - min_ijk.i as isize).abs(), (max_ijk.j as isize - min_ijk.j as isize).abs()) as u16;
+            // check if in chosen octant and add
+            match octant {
+                0 => if pos.x >= 0.0 && pos.y >= 0.0 && pos.z >= 0.0 && distance < radius {
+                    self.add_atom(iter_ijk);
+                    },
+                1 => if pos.x <  0.0 && pos.y >= 0.0 && pos.z >= 0.0 && distance < radius {
+                    self.add_atom(iter_ijk);
+                    },
+                2 => if pos.x >= 0.0 && pos.y <  0.0 && pos.z >= 0.0 && distance < radius {
+                    self.add_atom(iter_ijk);
+                    },
+                3 => if pos.x <  0.0 && pos.y <  0.0 && pos.z >= 0.0 && distance < radius {
+                    self.add_atom(iter_ijk);
+                    },
+                4 => if pos.x >= 0.0 && pos.y >= 0.0 && pos.z <  0.0 && distance < radius {
+                    self.add_atom(iter_ijk);
+                    },
+                5 => if pos.x <  0.0 && pos.y >= 0.0 && pos.z <  0.0 && distance < radius {
+                    self.add_atom(iter_ijk);
+                    },
+                6 => if pos.x >= 0.0 && pos.y <  0.0 && pos.z <  0.0 && distance < radius {
+                    self.add_atom(iter_ijk);
+                    },
+                7 => if pos.x <  0.0 && pos.y <  0.0 && pos.z <  0.0 && distance < radius {
+                    self.add_atom(iter_ijk);
+                    },
+                _ => {}
 
-        // iter over all possible positions
-        for i in (min_ijk.i - delta)..(max_ijk.i + delta) {
-            for j in  (min_ijk.j - delta)..(max_ijk.j + delta) {
-                for k in  (min_ijk.k - 1)..(max_ijk.k + 1) {
-                    
-                    // check if within sphere
-                    let ijk = IJK{i,j,k};
-                    let pos = self.lattice.get_xyz(ijk);
-                    let pos = XYZ{x: pos.x - center.x, y: pos.y - center.y, z: pos.z - center.z};
-                    let distance = ( (pos.x).powi(2) + (pos.y).powi(2) + (pos.z).powi(2) ).sqrt();
-
-                    // check if in chosen octant and add
-                    match octant {
-                        0 => if pos.x >= 0.0 && pos.y >= 0.0 && pos.z >= 0.0 && distance < radius {
-                            self.add_atom(ijk);
-                            },
-                        1 => if pos.x <  0.0 && pos.y >= 0.0 && pos.z >= 0.0 && distance < radius {
-                            self.add_atom(ijk);
-                            },
-                        2 => if pos.x >= 0.0 && pos.y <  0.0 && pos.z >= 0.0 && distance < radius {
-                            self.add_atom(ijk);
-                            },
-                        3 => if pos.x <  0.0 && pos.y <  0.0 && pos.z >= 0.0 && distance < radius {
-                            self.add_atom(ijk);
-                            },
-                        4 => if pos.x >= 0.0 && pos.y >= 0.0 && pos.z <  0.0 && distance < radius {
-                            self.add_atom(ijk);
-                            },
-                        5 => if pos.x <  0.0 && pos.y >= 0.0 && pos.z <  0.0 && distance < radius {
-                            self.add_atom(ijk);
-                            },
-                        6 => if pos.x >= 0.0 && pos.y <  0.0 && pos.z <  0.0 && distance < radius {
-                            self.add_atom(ijk);
-                            },
-                        7 => if pos.x <  0.0 && pos.y <  0.0 && pos.z <  0.0 && distance < radius {
-                            self.add_atom(ijk);
-                            },
-                        _ => {}
-
-                    }   
-                }
-            }
+            }   
         }
     }
 
@@ -530,125 +493,81 @@ impl Crystal {
         // calc some parameters first
         let min = XYZ{x: center.x - length/2.0, y: center.y - radius, z: center.z - radius}; 
         let max = XYZ{x: center.x + length/2.0, y: center.y + radius, z: center.z + radius}; 
-        let min_ijk = self.lattice.get_ijk(min);
-        let max_ijk = self.lattice.get_ijk(max);
 
-        // some heuristics again
-        let delta = 2* std::cmp::max((max_ijk.i as isize - min_ijk.i as isize).abs(), (max_ijk.j as isize - min_ijk.j as isize).abs()) as u16;
-        
-        // iter over all possible positions
-        for i in (min_ijk.i - delta)..(max_ijk.i + delta) {
-            for j in  (min_ijk.j - delta)..(max_ijk.j + delta) {
-                for k in  (min_ijk.k - 1)..(max_ijk.k + 1) {
-                    
-                    // check if within cylinder and add
-                    let ijk = IJK{i,j,k};
-                    let pos = self.lattice.get_xyz(ijk);
-                    let pos = XYZ{x: pos.x - center.x, y: pos.y - center.y, z: pos.z - center.z};
-                    let distance = ( (pos.y).powi(2) + (pos.z).powi(2) ).sqrt();
-                    if -length/2.0 < pos.x && pos.x < length/2.0 && distance < radius {
-                        self.add_atom(ijk);
-                    }   
-                }
-            }
+        // iterate over a box
+        self.lattice.init_box_iter(min, max);
+        for iter_ijk in self.lattice.clone().into_iter()  {
+
+            // check if within cylinder and add
+            let pos = self.lattice.get_xyz(iter_ijk);
+            let pos = XYZ{x: pos.x - center.x, y: pos.y - center.y, z: pos.z - center.z};
+            let distance = ( (pos.y).powi(2) + (pos.z).powi(2) ).sqrt();
+            if -length/2.0 < pos.x && pos.x < length/2.0 && distance < radius {
+                self.add_atom(iter_ijk);
+            }   
         }
     }
 
     /// Add a duodecant (1/12th) of a cylinder filled with gold.
     pub fn add_cylinder_corner(&mut self, center: XYZ, length: f32, radius: f32, duodecant: u8) {
         
-        // calc some parameters first
-        let dist = if  length/2.0 > radius {length/2.0}
-                   else {radius};
-        let min = XYZ{x: center.x - dist, y: center.y - dist, z: center.z - dist}; 
-        let max = XYZ{x: center.x + dist, y: center.y + dist, z: center.z + dist}; 
-        let min_ijk = self.lattice.get_ijk(min);
-        let max_ijk = self.lattice.get_ijk(max);
+        // treat the three principle orientations separately
+        match duodecant {
+            x if x<=3 => {
+                // calc some parameters first
+                let min = XYZ{x: center.x - length/2.0, y: center.y - radius, z: center.z - radius}; 
+                let max = XYZ{x: center.x + length/2.0, y: center.y + radius, z: center.z + radius}; 
 
-        // some heuristics again
-        let delta_i = (max_ijk.i as isize - min_ijk.i as isize).abs();
-        let delta_j = (max_ijk.j as isize - min_ijk.j as isize).abs();
-        let delta_k = (max_ijk.k as isize - min_ijk.k as isize).abs();
-        let delta = (delta_k/2* std::cmp::max(delta_i, delta_j)) as u16; 
-
-        // iter over all possible positions
-        for i in (min_ijk.i - delta)..(max_ijk.i + delta) {
-            for j in  (min_ijk.j - delta)..(max_ijk.j + delta) {
-                for k in  (min_ijk.k - 1)..(max_ijk.k + 1) {
+                // iterate over a box
+                self.lattice.init_box_iter(min, max);
+                for iter_ijk in self.lattice.clone().into_iter()  {
 
                     // check if within cylinder
-                    let ijk = IJK{i,j,k};
-                    let pos = self.lattice.get_xyz(ijk);
+                    let pos = self.lattice.get_xyz(iter_ijk);
                     let pos = XYZ{x: pos.x - center.x, y: pos.y - center.y, z: pos.z - center.z};
                     
-                    // check if in duodecant 0-3; 8-11 and add -- duodecants 4-7 are handled separately to due speed issues
+                    // check if in duodecant 0-3 and add
                     match duodecant {
                         0 => {
                             let distance = ( (pos.y).powi(2) + (pos.z).powi(2) ).sqrt();
                             if pos.x.abs() < length/2.0 && pos.y >= 0.0 && pos.z >= 0.0 && distance < radius {
-                                self.add_atom(ijk);
+                                self.add_atom(iter_ijk);
                             }
                         },
                         1 => {
                             let distance = ( (pos.y).powi(2) + (pos.z).powi(2) ).sqrt();
                             if pos.x.abs() < length/2.0 && pos.y <  0.0 && pos.z >= 0.0 && distance < radius {
-                                self.add_atom(ijk);
+                                self.add_atom(iter_ijk);
                             }
                         },
                         2 => {
                             let distance = ( (pos.y).powi(2) + (pos.z).powi(2) ).sqrt();
                             if pos.x.abs() < length/2.0 && pos.y >= 0.0 && pos.z <  0.0 && distance < radius {
-                                self.add_atom(ijk);
+                                self.add_atom(iter_ijk);
                             }
                         },
                         3 => {
                             let distance = ( (pos.y).powi(2) + (pos.z).powi(2) ).sqrt();
                             if pos.x.abs() < length/2.0 && pos.y <  0.0 && pos.z <  0.0 && distance < radius {
-                                self.add_atom(ijk);
-                            }
-                        },
-                        8 => {
-                            let distance = ( (pos.x).powi(2) + (pos.y).powi(2) ).sqrt();
-                            if pos.z.abs() < length/2.0 && pos.x >= 0.0 && pos.y >= 0.0 && distance < radius {
-                                self.add_atom(ijk);
-                            }
-                        },
-                        9 => {
-                            let distance = ( (pos.x).powi(2) + (pos.y).powi(2) ).sqrt();
-                            if pos.z.abs() < length/2.0 && pos.x <  0.0 && pos.y >= 0.0 && distance < radius {
-                                self.add_atom(ijk);
-                            }
-                        },
-                        10 => {
-                            let distance = ( (pos.x).powi(2) + (pos.y).powi(2) ).sqrt();
-                            if pos.z.abs() < length/2.0 && pos.x >= 0.0 && pos.y <  0.0 && distance < radius {
-                                self.add_atom(ijk);
-                            }
-                        },
-                        11 => {
-                            let distance = ( (pos.x).powi(2) + (pos.y).powi(2) ).sqrt();
-                            if pos.z.abs() < length/2.0 && pos.x <  0.0 && pos.y <  0.0 && distance < radius {
-                                self.add_atom(ijk);
+                                self.add_atom(iter_ijk);
                             }
                         },
                         _ => {}
                     
                     }
                 }
-            }
-        }
+            },
+            x if 4<=x && x<=7  => {
+                // calc some parameters first
+                let min = XYZ{x: center.x - radius, y: center.y - length/2.0, z: center.z - radius}; 
+                let max = XYZ{x: center.x + radius, y: center.y + length/2.0, z: center.z + radius}; 
 
-        // different heuristics for duodecant 4-7
-        let delta = (delta_k/10* std::cmp::max(delta_i, delta_j)) as u16; 
-        
-        // iter over all possible positions
-        for i in (min_ijk.i - delta)..(max_ijk.i + delta) {
-            for j in  (min_ijk.j - delta)..(max_ijk.j + delta) {
-                for k in  (min_ijk.k - 1)..(max_ijk.k + 1) {
-                    
+                // iterate over a box
+                self.lattice.init_box_iter(min, max);
+                for iter_ijk in self.lattice.clone().into_iter()  {
+
                     // check if within cylinder
-                    let ijk = IJK{i,j,k};
-                    let pos = self.lattice.get_xyz(ijk);
+                    let pos = self.lattice.get_xyz(iter_ijk);
                     let pos = XYZ{x: pos.x - center.x, y: pos.y - center.y, z: pos.z - center.z};
                     
                     // check if in duodecant 4-7 and add
@@ -656,33 +575,83 @@ impl Crystal {
                         4 => {
                             let distance = ( (pos.z).powi(2) + (pos.x).powi(2) ).sqrt();
                             if pos.y.abs() < length/2.0 && pos.z >= 0.0 && pos.x >= 0.0 && distance < radius {
-                                self.add_atom(ijk);
+                                self.add_atom(iter_ijk);
                             }
                         },
                         5 => {
                             let distance = ( (pos.z).powi(2) + (pos.x).powi(2) ).sqrt();
                             if pos.y.abs() < length/2.0 && pos.z <  0.0 && pos.x >= 0.0 && distance < radius {
-                                self.add_atom(ijk);
+                                self.add_atom(iter_ijk);
                             }
                         },
                         6 => {
                             let distance = ( (pos.z).powi(2) + (pos.x).powi(2) ).sqrt();
                             if pos.y.abs() < length/2.0 && pos.z >= 0.0 && pos.x <  0.0 && distance < radius {
-                                self.add_atom(ijk);
+                                self.add_atom(iter_ijk);
                             }
                         },
                         7 => {
                             let distance = ( (pos.z).powi(2) + (pos.x).powi(2) ).sqrt();
                             if pos.y.abs() < length/2.0 && pos.z <  0.0 && pos.x <  0.0 && distance < radius {
-                                self.add_atom(ijk);
+                                self.add_atom(iter_ijk);
                             }
                         },
                         _ => {}
                     
                     }
                 }
-            }
+            },
+            x if 8<=x && x<=11  => {
+                // calc some parameters first
+                let min = XYZ{x: center.x - radius, y: center.y - radius, z: center.z - length/2.0}; 
+                let max = XYZ{x: center.x + radius, y: center.y + radius, z: center.z + length/2.0}; 
+
+                // iterate over a box
+                self.lattice.init_box_iter(min, max);
+                for iter_ijk in self.lattice.clone().into_iter()  {
+
+                    // check if within cylinder
+                    let pos = self.lattice.get_xyz(iter_ijk);
+                    let pos = XYZ{x: pos.x - center.x, y: pos.y - center.y, z: pos.z - center.z};
+                    
+                    // check if in duodecant 8-11 and add
+                    match duodecant {
+                        8 => {
+                            let distance = ( (pos.x).powi(2) + (pos.y).powi(2) ).sqrt();
+                            if pos.z.abs() < length/2.0 && pos.x >= 0.0 && pos.y >= 0.0 && distance < radius {
+                                self.add_atom(iter_ijk);
+                            }
+                        },
+                        9 => {
+                            let distance = ( (pos.x).powi(2) + (pos.y).powi(2) ).sqrt();
+                            if pos.z.abs() < length/2.0 && pos.x <  0.0 && pos.y >= 0.0 && distance < radius {
+                                self.add_atom(iter_ijk);
+                            }
+                        },
+                        10 => {
+                            let distance = ( (pos.x).powi(2) + (pos.y).powi(2) ).sqrt();
+                            if pos.z.abs() < length/2.0 && pos.x >= 0.0 && pos.y <  0.0 && distance < radius {
+                                self.add_atom(iter_ijk);
+                            }
+                        },
+                        11 => {
+                            let distance = ( (pos.x).powi(2) + (pos.y).powi(2) ).sqrt();
+                            if pos.z.abs() < length/2.0 && pos.x <  0.0 && pos.y <  0.0 && distance < radius {
+                                self.add_atom(iter_ijk);
+                            }
+                        },
+                        _ => {}
+                    
+                    }
+                }
+            },
+            _ => {}
         }
+        
+
+        
+        
+        
     }
 
     

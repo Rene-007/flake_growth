@@ -18,7 +18,15 @@ const Z0: XYZ = XYZ{x:0.5, y:YPOS, z:ZPOS};
 pub struct Lattice {
     pub stacking: Stackings,
     pub stacking_faults: Vec::<u16>,
-    diameter: f32
+    diameter: f32,
+    min: XYZ,
+    max: XYZ,
+    min_ijk: IJK,
+    max_ijk: IJK,
+    layer_start: IJK,
+    pub origin: IJK,
+    curr: IJK,
+    next: IJK,
 }
 
 impl Lattice {
@@ -26,7 +34,15 @@ impl Lattice {
         Lattice{ 
             stacking: Stackings::new(&stacking_faults), 
             stacking_faults,
-            diameter 
+            diameter,
+            min: XYZ{x: 0.0, y: 0.0, z:0.0}, 
+            max: XYZ{x: 0.0, y: 0.0, z:0.0},
+            min_ijk: CENTER,
+            max_ijk: CENTER,
+            layer_start: CENTER,
+            origin: CENTER,
+            curr: CENTER,
+            next: CENTER,
         }
     }
     
@@ -46,9 +62,9 @@ impl Lattice {
         let c = xyz.z/Z0.z;
         let b = (xyz.y - Z0.y/Z0.z*xyz.z)/Y0.y;
         let a = xyz.x - 0.5*b - 0.5*c;
-        let k = (c/self.diameter + CENTER.k as f32) as u16; 
-        let j = (b/self.diameter + CENTER.j as f32) as u16; 
-        let i = (a/self.diameter + CENTER.i as f32) as u16; 
+        let k = (c/self.diameter + CENTER.k as f32).round() as u16; 
+        let j = (b/self.diameter + CENTER.j as f32).round() as u16; 
+        let i = (a/self.diameter + CENTER.i as f32).round() as u16; 
         IJK{i, j, k}   
     }
     
@@ -78,6 +94,100 @@ impl Lattice {
             10 => IJK{i: i + self.stacking.shift_i[k as usize] as u16,j: (j as i16 + self.stacking.shift_j[k as usize]) as u16 ,k: k - 1}, 
             11 => IJK{i: i + 1 ,j: j + 0 ,k: k - 1}, 
             _ => IJK{i,j,k}
+        }
+    }
+
+    /// initialize a box for the iterator
+    pub fn init_box_iter(&mut self, min: XYZ, max: XYZ) {
+        self.min = min;
+        self.max = max;
+        self.min_ijk = self.get_ijk(min);
+        self.max_ijk = self.get_ijk(max);
+        self.origin = self.min_ijk;
+        self.layer_start = self.min_ijk;
+        self.curr = self.get_ijk(min);
+        self.next = self.get_ijk(min);
+    }
+
+    // check if new starting point is inside box
+    fn is_inside(&self, ijk: IJK) -> bool {
+        let center_xyz = self.get_xyz(self.origin);
+        let c_x = center_xyz.x;
+        let c_y = center_xyz.y;
+        self.get_xyz(ijk).x >= (c_x - 0.1*DIAMETER) && self.get_xyz(ijk).y >= (c_y - 0.1*DIAMETER)
+    } 
+
+    // determine starting point of next layer depending on the stacking
+    fn kplus(&mut self, ijk: IJK) -> IJK {
+        let mut ijk = ijk.clone();
+        ijk.k += 1;
+        if self.stacking.shift_i[ijk.k as usize ] == 0  {
+            if self.is_inside(IJK{i: ijk.i - 1, j: ijk.j, k: ijk.k}) { 
+                ijk.i -= 1;
+                // print!("wa") 
+            }
+            else if self.is_inside(IJK{i: ijk.i, j: ijk.j - 1, k: ijk.k}) {
+                ijk.j -= 1;
+                //  print!("wy") 
+                }
+            else if self.is_inside(IJK{i: ijk.i, j: ijk.j, k: ijk.k}) { 
+                // print!("w") 
+            }
+        }
+        else {
+            if self.is_inside(IJK{i: ijk.i - 1, j: ijk.j, k: ijk.k}) { 
+                ijk.i -= 1;
+                // print!("wa") 
+            }
+            else if self.is_inside(IJK{i: ijk.i, j: ijk.j, k: ijk.k}) { 
+                // print!("w") 
+            }
+            else if self.is_inside(IJK{i: ijk.i - 1, j: ijk.j + 1, k: ijk.k}) { 
+                ijk.i -= 1;
+                ijk.j += 1;
+                // print!("ewa") 
+            }
+        }
+        // println!("");
+        ijk
+    }
+
+}
+
+/// iterator over the defined box
+impl Iterator for Lattice {
+    type Item = IJK;
+    
+    // self.curr and self.next is used for the sequence
+    // The following is returned:
+    //     -> When the itereator is finished: None
+    //     -> Otherwise: the next value in Some
+    fn next(&mut self) -> Option<IJK> {
+
+        // check if we are already at top layer
+        if self.next.k == self.max_ijk.k + 1 {
+            // reset box to zero    
+            self.init_box_iter(XYZ{x: 0.0, y: 0.0, z: 0.0}, XYZ{x: 0.0, y: 0.0, z: 0.0});       
+            None
+        }
+        // still at least a layer to go
+        else {
+            self.curr = self.next;
+            // iterating along the line until the line end -> new line
+            if self.get_xyz(IJK{i: self.curr.i + 1, j: self.curr.j, k: self.curr.k}).x <= self.max.x {
+                self.next = IJK{i: self.curr.i + 1, j: self.curr.j, k: self.curr.k};
+            }
+            // iterating over the lines until end of lines -> new layer
+            else if self.get_xyz(IJK{i: self.curr.i, j: self.curr.j + 1, k: self.curr.k}).y <= (self.max.y) {
+                let i_min = self.layer_start.i - (self.curr.j + 1 - self.layer_start.j)/2;
+                self.next = IJK{i: i_min, j: self.curr.j + 1, k: self.curr.k};
+            }
+            // iterating over the layers
+            else {
+                self.layer_start = self.kplus(self.layer_start);
+                self.next = self.layer_start;
+            }
+            Some(self.curr)
         }
     }
 }
@@ -111,11 +221,11 @@ impl Stackings {
         // set the central position to zero
         let kzero = pos[CENTER.k as usize];
         pos.iter_mut().for_each(|el| *el -= kzero);
-        // FLAKE_MAX.k must be <= 32 for the following dbg's to work
-        // dbg!("Stacking pos     {:?}", pos);
-        // dbg!("Stacking shift_i {:?}", shift_i);
-        // dbg!("Stacking shift_j {:?}", shift_j);
-        
+        // FLAKE_MAX.k must be <= 32 for the following println!'s to work
+        // println!("Stacking pos     {:?}", pos);
+        // println!("Stacking shift_i {:?}", shift_i);
+        // println!("Stacking shift_j {:?}", shift_j);
+        // println!("Stacking shift_j sum {:?}", shift_j[7..14 as usize].iter().sum::<i16>());
         Stackings { 
             shift_i, 
             shift_j, 

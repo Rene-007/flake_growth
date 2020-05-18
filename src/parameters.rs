@@ -5,6 +5,7 @@ pub const BITS: u16 = 2;
 pub const DIV: u16 = 8 / BITS;
 
 #[cfg(not(target_arch = "wasm32"))]
+// pub const FLAKE_MAX: IJK = IJK{i:6000, j:6000, k:32};          // for debugging use
 pub const FLAKE_MAX: IJK = IJK{i:6000, j:6000, k:300};          // this uses 2.7B (virtual) memory and means 2x2um^2 x 100nm
 // pub const FLAKE_MAX: IJK = IJK{i:12000, j:12000, k:600};     // this uses 20GB (virtual) memory and means 4x4um^2 x 200nm (sometimes slower)
 
@@ -17,7 +18,8 @@ pub const CENTER: IJK = IJK{i: FLAKE_MAX.i/2, j: FLAKE_MAX.j/2, k: FLAKE_MAX.k/2
 // Stacking faults arrangement -- Shouldn't be larger than FLAKE.MAX.k
 // pub const STACKING_FAULTS: [u16; 0] = [];
 // pub const STACKING_FAULTS: [u16; 1] = [CENTER.k];
-pub const STACKING_FAULTS: [u16; 2] = [CENTER.k-2, CENTER.k+2];
+// pub const STACKING_FAULTS: [u16; 2] = [CENTER.k-2, CENTER.k+2];
+pub const STACKING_FAULTS: [u16; 1] = [CENTER.k+3];
 // pub const STACKING_FAULTS: [u16; 3] = [CENTER.k-3, CENTER.k, CENTER.k+3];
 // pub const STACKING_FAULTS: [u16; 4] = [CENTER.k-3, CENTER.k, CENTER.k+6, CENTER.k+8];
 

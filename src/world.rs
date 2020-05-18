@@ -10,7 +10,6 @@ use crate::crystal::*;
 use crate::scene::*;
 use crate::planar_scene::*;
 
-use kiss3d::light::Light;
 use kiss3d::camera::{Camera, ArcBall};
 use kiss3d::planar_camera::PlanarCamera;
 use kiss3d::post_processing::PostProcessingEffect;
@@ -83,6 +82,7 @@ impl State for World {
                         // add some special geometries
                         Key::L =>       self.add_gold_layer(window),                // add gold layer
                         Key::O =>       self.add_dirt_layer(window),                // add dirt layer on top
+                        // Key::Z =>       self.add_box(window),                       // add box     
                         Key::Home =>    self.add_sphere(window),                    // add sphere     
                         Key::End =>     self.add_cylinder(window),                  // add cylinder                        
                         Key::Delete =>  self.add_rounded_monomer_antenna(window),   // add rounded monomer antenna
@@ -91,6 +91,7 @@ impl State for World {
                         Key::U =>       self.add_rounded_jord_antenna(window),      // add rounded Jord antenna
                         Key::J =>       self.add_jord_antenna(window),              // add Jord antenna
                         Key::M =>       self.add_remove_substrate(window),          // add/remove substrat below lowest vacancies layer    
+                        // Key::N =>       self.add_column(window),                    // add column step by step    
                         
                         // tweak stacking
                         Key::Up =>      self.reset_stacking(window),                // reset stacking
@@ -147,15 +148,10 @@ impl World {
         let lattice = Lattice::new(STACKING_FAULTS.to_vec(), DIAMETER);
         let flake = Crystal::new(lattice.clone());
 
-        println!("Stacking faults {:?}", STACKING_FAULTS);
-
         // init OpenGL scene
-        // let mut window = Window::new_with_size("Flake Growth", 1600, 900);
         let scene = Scene::new(window, lattice.clone());
         let overlay = PlanarScene::new(window);
         let camera = ArcBall::new(Point3::new(-15.0, 7.5, 0.0), Point3::origin());
-        window.set_light(Light::Absolute(Point3::new(-300.0, 300.0, 300.0)));
-        window.set_background_color(1.0, 1.0, 1.0);
     
         // start with a single atom in the middle
         let IJK { i, j, k } = CENTER;
@@ -278,6 +274,30 @@ impl World {
         self.scene.update_dirt(window, &self.flake);
         self.scene.update_vacancies(window, &self.flake, false);
     }
+
+    // fn add_box(&mut self, window: &mut Window) {
+    //     self.flake.clear();
+    //     let pos = XYZ{x: 0.0, y: 5.0, z: 0.0};
+    //     self.flake.add_box(pos, 10.0, 5.0, 3.0, Atom::Gold);
+    //     self.camera = ArcBall::new(Point3::new(-45.0, 22.5, 0.0), Point3::origin());
+    //     self.scene.update_surface(window, &self.flake);
+    //     self.scene.update_vacancies(window, &self.flake, false);
+    // }
+
+    // fn add_column(&mut self, window: &mut Window) {
+    //     // if self.k == CENTER.k {self.lattice.origin = IJK{i: self.i, j: self.j , k: self.k}}
+    //     if self.lattice.origin == CENTER {self.lattice.origin = IJK{i: self.i, j: self.j , k: self.k}}
+    //     let ijk = self.lattice.kplus(IJK{i: self.i, j: self.j , k: self.k});
+    //     self.i = ijk.i;
+    //     self.j = ijk.j;
+    //     self.k = ijk.k;
+
+    //     if self.flake.add_atom(ijk) { 
+    //         self.scene.update_surface(window, &self.flake);
+    //         self.scene.update_vacancies(window, &self.flake, false);
+    //     } 
+    //     self.scene.update_boundaries(window, &self.flake);
+    // }
 
     fn add_sphere(&mut self, window: &mut Window) {
         self.flake.clear();
@@ -408,10 +428,11 @@ impl World {
     }
 
     fn reset_stacking(&mut self, window: &mut Window) {
-        self.lattice = Lattice::new(STACKING_FAULTS.to_vec(), DIAMETER);
+        self.lattice = Lattice::new([].to_vec(), DIAMETER);
         self.flake.lattice = self.lattice.clone();
         self.flake.update_vacancies();
         self.scene.lattice = self.lattice.clone();
+        self.scene.update_surface(window, &self.flake);
         self.scene.update_vacancies(window, &self.flake, false);
         println!("Stacking faults {:?}", self.lattice.stacking_faults);
     }
