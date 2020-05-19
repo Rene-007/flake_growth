@@ -60,18 +60,19 @@ impl Lattice {
     pub fn get_ijk(&self, xyz: XYZ ) -> IJK {
         // back mapping from the real world to the memory location
         let mut xyz = xyz;
+        
         // the k component is simple
         let c = xyz.z/Z0.z;
         let k = (c/self.diameter + CENTER.k as f32).round() as u16; 
 
         // j and subsequently i have to be compensated for stacking faults
-        // this is possible by just correcting the original y coordinate
+        // this is possible by correcting the original y coordinate
         // note, this is basically just the difference between the stacking pos without and with stacking faults
         xyz.y -= YPOS*(CENTER.k as i32 - (k as i32 - self.stacking.pos[k as usize] as i32 )) as f32 * DIAMETER;
 
-        // the rest is straight forward the back projection
-        let b = (xyz.y - Z0.y/Z0.z*xyz.z)/Y0.y;                     
-        let a = xyz.x - 0.5*b - 0.5*c;
+        // the rest is a straight forward back projection
+        let b = (xyz.y - Z0.y*c)/Y0.y;                     
+        let a = (xyz.x - Y0.x*b - Z0.x*c)/X0.x;
         let j = (b/self.diameter + CENTER.j as f32).round() as u16;   
         let i = (a/self.diameter + CENTER.i as f32).round() as u16; 
         IJK{i, j, k}   
