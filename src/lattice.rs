@@ -59,11 +59,20 @@ impl Lattice {
     
     pub fn get_ijk(&self, xyz: XYZ ) -> IJK {
         // back mapping from the real world to the memory location
+        let mut xyz = xyz;
+        // the k component is simple
         let c = xyz.z/Z0.z;
-        let b = (xyz.y - Z0.y/Z0.z*xyz.z)/Y0.y;
-        let a = xyz.x - 0.5*b - 0.5*c;
         let k = (c/self.diameter + CENTER.k as f32).round() as u16; 
-        let j = (b/self.diameter + CENTER.j as f32).round() as u16; 
+
+        // j and subsequently i have to be compensated for stacking faults
+        // this is possible by just correcting the original y coordinate
+        // note, this is basically just the difference between the stacking pos without and with stacking faults
+        xyz.y -= YPOS*(CENTER.k as i32 - (k as i32 - self.stacking.pos[k as usize] as i32 )) as f32 * DIAMETER;
+
+        // the rest is straight forward the back projection
+        let b = (xyz.y - Z0.y/Z0.z*xyz.z)/Y0.y;                     
+        let a = xyz.x - 0.5*b - 0.5*c;
+        let j = (b/self.diameter + CENTER.j as f32).round() as u16;   
         let i = (a/self.diameter + CENTER.i as f32).round() as u16; 
         IJK{i, j, k}   
     }
@@ -105,8 +114,8 @@ impl Lattice {
         self.max_ijk = self.get_ijk(max);
         self.origin = self.min_ijk;
         self.layer_start = self.min_ijk;
-        self.curr = self.get_ijk(min);
-        self.next = self.get_ijk(min);
+        self.curr = self.min_ijk;
+        self.next = self.min_ijk;
     }
 
     // check if new starting point is inside box
@@ -114,11 +123,12 @@ impl Lattice {
         let center_xyz = self.get_xyz(self.origin);
         let c_x = center_xyz.x;
         let c_y = center_xyz.y;
-        self.get_xyz(ijk).x >= (c_x - 0.1*DIAMETER) && self.get_xyz(ijk).y >= (c_y - 0.1*DIAMETER)
+        // self.get_xyz(ijk).x > (c_x - DIAMETER) && self.get_xyz(ijk).y > (c_y - DIAMETER)
+        self.get_xyz(ijk).x >= (c_x - 0.01*DIAMETER) && self.get_xyz(ijk).y >= (c_y - 0.01*DIAMETER)
     } 
 
     // determine starting point of next layer depending on the stacking
-    fn kplus(&mut self, ijk: IJK) -> IJK {
+    pub fn kplus(&mut self, ijk: IJK) -> IJK {
         let mut ijk = ijk.clone();
         ijk.k += 1;
         if self.stacking.shift_i[ijk.k as usize ] == 0  {
@@ -167,7 +177,7 @@ impl Iterator for Lattice {
         // check if we are already at top layer
         if self.next.k == self.max_ijk.k + 1 {
             // reset box to zero    
-            self.init_box_iter(XYZ{x: 0.0, y: 0.0, z: 0.0}, XYZ{x: 0.0, y: 0.0, z: 0.0});       
+            // self.init_box_iter(XYZ{x: 0.0, y: 0.0, z: 0.0}, XYZ{x: 0.0, y: 0.0, z: 0.0});       
             None
         }
         // still at least a layer to go
