@@ -525,33 +525,22 @@ impl Crystal {
                     // check if within cylinder
                     let pos = self.lattice.get_xyz(iter_ijk);
                     let pos = XYZ{x: pos.x - center.x, y: pos.y - center.y, z: pos.z - center.z};
+                    let distance = ( (pos.y).powi(2) + (pos.z).powi(2) ).sqrt();
                     
                     // check if in duodecant 0-3 and add
                     match duodecant {
-                        0 => {
-                            let distance = ( (pos.y).powi(2) + (pos.z).powi(2) ).sqrt();
-                            if pos.x.abs() < length/2.0 && pos.y >= 0.0 && pos.z >= 0.0 && distance < radius {
+                        0 => if pos.x.abs() < length/2.0 && pos.y >= 0.0 && pos.z >= 0.0 && distance < radius {
+                                self.add_atom(iter_ijk); 
+                            },
+                        1 => if pos.x.abs() < length/2.0 && pos.y <  0.0 && pos.z >= 0.0 && distance < radius {
                                 self.add_atom(iter_ijk);
-                            }
-                        },
-                        1 => {
-                            let distance = ( (pos.y).powi(2) + (pos.z).powi(2) ).sqrt();
-                            if pos.x.abs() < length/2.0 && pos.y <  0.0 && pos.z >= 0.0 && distance < radius {
+                            },
+                        2 => if pos.x.abs() < length/2.0 && pos.y >= 0.0 && pos.z <  0.0 && distance < radius {
                                 self.add_atom(iter_ijk);
-                            }
-                        },
-                        2 => {
-                            let distance = ( (pos.y).powi(2) + (pos.z).powi(2) ).sqrt();
-                            if pos.x.abs() < length/2.0 && pos.y >= 0.0 && pos.z <  0.0 && distance < radius {
+                            },
+                        3 => if pos.x.abs() < length/2.0 && pos.y <  0.0 && pos.z <  0.0 && distance < radius {
                                 self.add_atom(iter_ijk);
-                            }
-                        },
-                        3 => {
-                            let distance = ( (pos.y).powi(2) + (pos.z).powi(2) ).sqrt();
-                            if pos.x.abs() < length/2.0 && pos.y <  0.0 && pos.z <  0.0 && distance < radius {
-                                self.add_atom(iter_ijk);
-                            }
-                        },
+                            },
                         _ => {}
                     
                     }
@@ -569,33 +558,22 @@ impl Crystal {
                     // check if within cylinder
                     let pos = self.lattice.get_xyz(iter_ijk);
                     let pos = XYZ{x: pos.x - center.x, y: pos.y - center.y, z: pos.z - center.z};
+                    let distance = ( (pos.z).powi(2) + (pos.x).powi(2) ).sqrt();
                     
                     // check if in duodecant 4-7 and add
                     match duodecant {
-                        4 => {
-                            let distance = ( (pos.z).powi(2) + (pos.x).powi(2) ).sqrt();
-                            if pos.y.abs() < length/2.0 && pos.z >= 0.0 && pos.x >= 0.0 && distance < radius {
+                        4 => if pos.y.abs() < length/2.0 && pos.z >= 0.0 && pos.x >= 0.0 && distance < radius {
                                 self.add_atom(iter_ijk);
-                            }
-                        },
-                        5 => {
-                            let distance = ( (pos.z).powi(2) + (pos.x).powi(2) ).sqrt();
-                            if pos.y.abs() < length/2.0 && pos.z <  0.0 && pos.x >= 0.0 && distance < radius {
+                            },
+                        5 => if pos.y.abs() < length/2.0 && pos.z <  0.0 && pos.x >= 0.0 && distance < radius {
                                 self.add_atom(iter_ijk);
-                            }
-                        },
-                        6 => {
-                            let distance = ( (pos.z).powi(2) + (pos.x).powi(2) ).sqrt();
-                            if pos.y.abs() < length/2.0 && pos.z >= 0.0 && pos.x <  0.0 && distance < radius {
+                            },
+                        6 => if pos.y.abs() < length/2.0 && pos.z >= 0.0 && pos.x <  0.0 && distance < radius {
                                 self.add_atom(iter_ijk);
-                            }
-                        },
-                        7 => {
-                            let distance = ( (pos.z).powi(2) + (pos.x).powi(2) ).sqrt();
-                            if pos.y.abs() < length/2.0 && pos.z <  0.0 && pos.x <  0.0 && distance < radius {
+                            },
+                        7 => if pos.y.abs() < length/2.0 && pos.z <  0.0 && pos.x <  0.0 && distance < radius {
                                 self.add_atom(iter_ijk);
-                            }
-                        },
+                            },
                         _ => {}
                     
                     }
@@ -613,33 +591,22 @@ impl Crystal {
                     // check if within cylinder
                     let pos = self.lattice.get_xyz(iter_ijk);
                     let pos = XYZ{x: pos.x - center.x, y: pos.y - center.y, z: pos.z - center.z};
+                    let distance = ( (pos.x).powi(2) + (pos.y).powi(2) ).sqrt();
                     
                     // check if in duodecant 8-11 and add
                     match duodecant {
-                        8 => {
-                            let distance = ( (pos.x).powi(2) + (pos.y).powi(2) ).sqrt();
-                            if pos.z.abs() < length/2.0 && pos.x >= 0.0 && pos.y >= 0.0 && distance < radius {
+                        8 => if pos.z.abs() < length/2.0 && pos.x >= 0.0 && pos.y >= 0.0 && distance < radius {
                                 self.add_atom(iter_ijk);
-                            }
-                        },
-                        9 => {
-                            let distance = ( (pos.x).powi(2) + (pos.y).powi(2) ).sqrt();
-                            if pos.z.abs() < length/2.0 && pos.x <  0.0 && pos.y >= 0.0 && distance < radius {
+                            },
+                        9 => if pos.z.abs() < length/2.0 && pos.x <  0.0 && pos.y >= 0.0 && distance < radius {
                                 self.add_atom(iter_ijk);
-                            }
-                        },
-                        10 => {
-                            let distance = ( (pos.x).powi(2) + (pos.y).powi(2) ).sqrt();
-                            if pos.z.abs() < length/2.0 && pos.x >= 0.0 && pos.y <  0.0 && distance < radius {
+                            },
+                        10 => if pos.z.abs() < length/2.0 && pos.x >= 0.0 && pos.y <  0.0 && distance < radius {
                                 self.add_atom(iter_ijk);
-                            }
-                        },
-                        11 => {
-                            let distance = ( (pos.x).powi(2) + (pos.y).powi(2) ).sqrt();
-                            if pos.z.abs() < length/2.0 && pos.x <  0.0 && pos.y <  0.0 && distance < radius {
+                            },
+                        11 => if pos.z.abs() < length/2.0 && pos.x <  0.0 && pos.y <  0.0 && distance < radius {
                                 self.add_atom(iter_ijk);
-                            }
-                        },
+                            },
                         _ => {}
                     
                     }
