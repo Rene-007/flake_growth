@@ -1,10 +1,14 @@
+/*!
+Implementation of the fcc lattice with stacking faults.
+
+In principle only this needs to be reimplemented for allowing other shapes with other geometries (e.g. 5 fold such as nanorods) to grow.
+
+*/
+
 use nalgebra::Translation3;
 use crate::helpers::*;
 use crate::parameters::*;
 
-
-#[derive(Copy,Clone,Debug)]
-pub struct XYZ {pub x: f32, pub y: f32, pub z: f32}
 
 // some helpful values to get the fcc lattice right
 const SIN60: f32 = 0.866_025_403_784;
@@ -14,11 +18,15 @@ const X0: XYZ = XYZ{x:1.0, y:0.0, z:0.0};
 const Y0: XYZ = XYZ{x:0.5, y:SIN60, z:0.0};
 const Z0: XYZ = XYZ{x:0.5, y:YPOS, z:ZPOS};
 
+/// Implenentation of the fcc lattice.
+///
+/// This basically does the mapping between memory locations and real world positions and also provides an iterator over a 3D box.
 #[derive(Clone)]
 pub struct Lattice {
     pub stacking: Stackings,
     pub stacking_faults: Vec::<u16>,
     diameter: f32,
+    // the following parameters are only needed for the iterator
     min: XYZ,
     max: XYZ,
     min_ijk: IJK,
@@ -30,6 +38,7 @@ pub struct Lattice {
 }
 
 impl Lattice {
+    /// Initialization of the lattice for given stacking faults (as a vector) and an atom diameter.
     pub fn new(stacking_faults: Vec<u16>, diameter: f32) -> Self {
         Lattice{ 
             stacking: Stackings::new(&stacking_faults), 
@@ -46,8 +55,8 @@ impl Lattice {
         }
     }
     
+    /// mapping from a memory location to a point in space using the fcc lattice
     pub fn get_xyz(&self, ijk: IJK) -> XYZ {
-        // mapping from a memory location to a point in space using the fcc lattice
         let a = (ijk.i as f32 - CENTER.i as f32) * self.diameter;
         let b = (ijk.j as f32 - CENTER.j as f32) * self.diameter;
         let c = (ijk.k as f32 - CENTER.k as f32) * self.diameter; 
@@ -57,10 +66,11 @@ impl Lattice {
         XYZ{x, y, z}   
     }
     
+    /// back mapping from the real world to the associated memory location
     pub fn get_ijk(&self, xyz: XYZ ) -> IJK {
-        // back mapping from the real world to the memory location
+        // for the correction further down the xyz needs to be made mutable (xyz is copy anyways)
         let mut xyz = xyz;
-        
+
         // the k component is simple
         let c = xyz.z/Z0.z;
         let k = (c/self.diameter + CENTER.k as f32).round() as u16; 
@@ -78,13 +88,15 @@ impl Lattice {
         IJK{i, j, k}   
     }
     
+
+    /// a small helper function for the scene
     pub fn position(&self, ijk: IJK) -> Translation3<f32> {
-        // a small helper for the scene
         let xyz: XYZ = self.get_xyz(ijk);
         // Translation3::new(xyz.x, xyz.y, xyz.z)   // When changing that you have to adept the wireframe, too!
         Translation3::new(xyz.y, xyz.z, xyz.x)
     }
 
+    /// give back the position of one of the twelve adjecent neighbors (number 0..11)
     pub fn next_neighbor(&self, ijk: IJK, neighbor: usize) -> IJK {  
         // Note, the stacking shift occurs between the layers.
         // So, the shift[k+1] refers to the shift from layer k to k+1
@@ -107,7 +119,7 @@ impl Lattice {
         }
     }
 
-    /// initialize a box for the iterator
+    /// initialize the box for the iterator
     pub fn init_box_iter(&mut self, min: XYZ, max: XYZ) {
         self.min = min;
         self.max = max;
@@ -119,7 +131,7 @@ impl Lattice {
         self.next = self.min_ijk;
     }
 
-    // check if new starting point is inside box
+    // check if new starting point is inside the box
     fn is_inside(&self, ijk: IJK) -> bool {
         let center_xyz = self.get_xyz(self.origin);
         let c_x = center_xyz.x;
@@ -129,7 +141,7 @@ impl Lattice {
     } 
 
     // determine starting point of next layer depending on the stacking
-    pub fn kplus(&mut self, ijk: IJK) -> IJK {
+    fn kplus(&mut self, ijk: IJK) -> IJK {
         let mut ijk = ijk.clone();
         ijk.k += 1;
         if self.stacking.shift_i[ijk.k as usize ] == 0  {
@@ -165,7 +177,7 @@ impl Lattice {
 
 }
 
-/// iterator over the defined box
+/// iterator over a box defined by init_box_iter
 impl Iterator for Lattice {
     type Item = IJK;
     
@@ -203,6 +215,8 @@ impl Iterator for Lattice {
     }
 }
 
+
+/// Structure to handle the stacking faults
 #[derive(Copy,Clone)]
 pub struct Stackings {
     pub shift_i: [u16; FLAKE_MAX.k as usize],
@@ -211,6 +225,7 @@ pub struct Stackings {
 }
 
 impl Stackings {
+    /// Init the stacking via a vector with the stacking fault positions
     pub fn new(stacking_faults: &Vec::<u16>) -> Self {
         // init the three lists with 1s
         let mut shift_i: [u16; FLAKE_MAX.k as usize] = [1; FLAKE_MAX.k as usize]; 

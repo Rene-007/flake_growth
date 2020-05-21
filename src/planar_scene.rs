@@ -45,7 +45,7 @@ impl PlanarScene {
             scene, 
             layers:         window.add_planar_group(), 
             help:           window.add_planar_group(), 
-            show_help:      false,
+            show_help:      true,
             indicators, 
             show, 
             font:           Font::default(), 
@@ -280,13 +280,24 @@ impl PlanarScene {
         let dy: f32 = 15.0;
         let dt: f32 = 18.0;
         self.draw_header(window, "Special Keys", x - dt, y + 2.0*dy);
-        self.draw_text(window, "Reset", x - dt, y + dy);
-        self.draw_wide_key(window, "←−−", x  - 2.0, y + dy, 80.0);
         self.draw_text(window, "Probabilities", x - dt, y);
         self.draw_key(window, " P", x, y);
+        
+
+        #[cfg(target_arch = "wasm32")]
+        {
+        self.draw_text(window, "Reset", x - dt, y + dy);
+        self.draw_key(window, " :", x, y + dy);
+
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+        self.draw_text(window, "Reset", x - dt, y + dy);
+        self.draw_wide_key(window, "←−−", x  - 2.0, y + dy, 80.0);
         self.draw_text(window, "Statistics", x - dt, y - dy);
         self.draw_key(window, "  ;", x, y - dy);
-        
+        }
+
         // Space
         self.draw_wide_key(window, "Space → show/hide help", 7.5, -85.0, 600.0);
 

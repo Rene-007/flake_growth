@@ -10,7 +10,8 @@ pub struct IJK {pub i: u16, pub j: u16, pub k: u16}
 // #[repr(C, align(8))]
 // pub struct IJK {pub k: u8, pub j: u16, pub i: u16}         //  doesn't make a speed difference
 
-
+#[derive(Copy,Clone,Debug)]
+pub struct XYZ {pub x: f32, pub y: f32, pub z: f32}
 
 // A compact struct for the colors
 #[derive(Copy,Clone,Debug)]

@@ -65,7 +65,10 @@ impl State for World {
                     match key { 
                         // special actions
                         Key::Back =>    self.back(window),                          // back to start
+                        Key::Period =>  self.back(window),                          // back to start for wasm
                         Key::P =>       self.flake.next_prob_list(),                // change probabilities
+                        
+                        #[cfg(not(target_arch = "wasm32"))]
                         Key::Comma =>   self.statistics(window),                    // some statistics
                      
                         // interact with (planar) scene
@@ -90,7 +93,7 @@ impl State for World {
                         Key::K =>       self.add_dipole_antenna(window),            // add Dipole antenna
                         Key::U =>       self.add_rounded_jord_antenna(window),      // add rounded Jord antenna
                         Key::J =>       self.add_jord_antenna(window),              // add Jord antenna
-                        Key::M =>       self.add_remove_substrate(window),          // add/remove substrat below lowest vacancies layer    
+                        Key::Down =>    self.add_remove_substrate(window),          // add/remove substrat below lowest vacancies layer    
                         // Key::N =>       self.add_column(window),                    // add column step by step    
                         
                         // tweak stacking
@@ -535,6 +538,7 @@ impl World {
         self.k = ijk.k;
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn statistics(&mut self, window: &mut Window) {
         let start = Instant::now();
         let added_atoms = self.flake.statistics();

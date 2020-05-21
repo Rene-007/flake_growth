@@ -14,16 +14,13 @@ It furthermore provides some basic shapes (layers, spheres, cylinders, boxes and
 use rand::Rng;
 use rand::seq::IteratorRandom;
 
-use std::io::Write;                                                                                                                                                                  
-use std::fs::File; 
+#[cfg(not(target_arch = "wasm32"))] 
+use std::{io::Write, fs::File}; 
 
 use crate::helpers::*;
 use crate::parameters::*;
 use crate::lattice::*;
 use crate::storage::*;
-
-#[cfg(target_arch = "wasm32")]
-use crate::println;
 
 #[derive(Copy,Clone,Debug)]
 pub struct Extrema {pub x_min: f32, pub x_max: f32, pub y_min: f32, pub y_max: f32, pub z_min: f32, pub z_max: f32 }
@@ -682,6 +679,7 @@ impl Crystal {
     /// This is the statistics module.
     /// Parameters like the stacking positions, substrate + probabilities can be change at runtime,
     /// and most of the other important ones at compile time via the paramters.rs.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn statistics(&mut self) -> usize {
 
         // create file and write header
