@@ -1,3 +1,11 @@
+/*!
+Init of the world, event loop and associated functions
+
+In order to get the whole program to work in wasm, too, an AppState had to be implemented and that's the reason for a seperate module instead of just putting everything in the main function.
+
+Events are handle in State::step and all the associated functions are implemented in World where basically the whole program is initiallized.
+*/
+
 // use std::time::Instant;  // doesn't work with wasm
 use instant::Instant;
 use separator::Separatable;

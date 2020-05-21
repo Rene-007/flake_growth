@@ -1,3 +1,7 @@
+/*!
+Compile time parameters
+*/
+
 use crate::helpers::*;
 
 // Maximal (static) size of the flake 
@@ -18,8 +22,8 @@ pub const CENTER: IJK = IJK{i: FLAKE_MAX.i/2, j: FLAKE_MAX.j/2, k: FLAKE_MAX.k/2
 // Stacking faults arrangement -- Shouldn't be larger than FLAKE.MAX.k
 // pub const STACKING_FAULTS: [u16; 0] = [];
 // pub const STACKING_FAULTS: [u16; 1] = [CENTER.k];
-// pub const STACKING_FAULTS: [u16; 2] = [CENTER.k-2, CENTER.k+2];
-pub const STACKING_FAULTS: [u16; 1] = [CENTER.k+3];
+pub const STACKING_FAULTS: [u16; 2] = [CENTER.k-2, CENTER.k+2];
+// pub const STACKING_FAULTS: [u16; 1] = [CENTER.k+3];
 // pub const STACKING_FAULTS: [u16; 3] = [CENTER.k-3, CENTER.k, CENTER.k+3];
 // pub const STACKING_FAULTS: [u16; 4] = [CENTER.k-3, CENTER.k, CENTER.k+6, CENTER.k+8];
 

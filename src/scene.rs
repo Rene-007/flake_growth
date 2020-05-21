@@ -1,3 +1,7 @@
+/*!
+3D OpenGL scene
+*/
+
 use std::cell::RefCell;
 use std::rc::Rc;
 

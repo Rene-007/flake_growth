@@ -1,5 +1,5 @@
 /*!
- The storage back end of the crystal struct.
+ Storage back-end of the crystal struct
 
 The **storage struct** provides:
 * Bulk: A lean 3D storage for the atom (empty, gold or dirt) of each position of the crystal which e.g. can hold 10.8 billion positions within 2.5GB.

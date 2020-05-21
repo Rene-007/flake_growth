@@ -1,7 +1,7 @@
 /*!
-Implementation of the fcc lattice with stacking faults.
+Implementation of the fcc lattice with stacking faults
 
-In principle only this needs to be reimplemented for allowing other shapes with other geometries (e.g. 5 fold such as nanorods) to grow.
+In principle only this needs to be reimplemented for allowing other shapes with other geometries to grow (e.g. nanorods -> 5-fold symmetry).
 
 */
 

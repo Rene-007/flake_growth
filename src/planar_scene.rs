@@ -1,3 +1,9 @@
+/*!
+2D overlays on top of the 3D OpenGL scene
+
+As in kiss3d a different coordinate system is used for 2D geometries than for text and I did not want to build an own 2D UI abstraction, this is the most "hacky" part of the programm.
+*/
+
 use std::time::Duration;
 use separator::Separatable;
 use std::rc::Rc;

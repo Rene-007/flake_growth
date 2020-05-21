@@ -1,7 +1,7 @@
 /*!
-The buisness logic of the flake growth program.
+Buisness logic of the flake growth program
 
-It utilizes the Storage back end and provides basic methods in the Crystal struct for:
+It utilizes the storage back-end and provides basic methods in the Crystal struct for:
 * adding single gold or dirt atoms
 * randomly selecting vacancy which may be turned into a new surface atom
 * and for adding many random atoms at once in an optimized way.

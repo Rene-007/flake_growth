@@ -5,6 +5,10 @@
 // the arragement (ijk vs kij vs kji) doesn't really make a difference
 
 // First a small struct definition for holding the constants
+/*!
+ Small helper structs + a wasm macro needed several times
+*/
+
 #[derive(Copy,Clone,Debug,PartialEq, Eq, PartialOrd, Ord)]
 pub struct IJK {pub i: u16, pub j: u16, pub k: u16}
 // #[repr(C, align(8))]
