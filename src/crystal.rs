@@ -217,15 +217,7 @@ impl Crystal {
         match self.vacancies.list[chosen_list].iter().choose(&mut rand::thread_rng()) {
             Some(&ijk) => ijk,
             None => CENTER
-        }   
-        // old long version -- same speeed
-        // match self.vacancies.list[chosen_list].iter().choose(&mut rand::thread_rng()) {
-        //     Some(value) => *value,
-        //     None => {
-        //         println!("Error: Atom not in list!");
-        //         CENTER
-        //     }
-        // }       
+        }         
     }
 
 
@@ -259,7 +251,7 @@ impl Crystal {
             if let Some(chosen_list) = prob_sum.iter().position(|&x| x >= random_number) { 
                 
                 // pick random atom from the chosen list
-                if let Some(&ijk) = self.vacancies.list[chosen_list].iter().choose(&mut rand::thread_rng()) {
+                if let Some(&ijk) = self.vacancies.list[chosen_list].iter().choose(&mut rand::thread_rng()) {       // this might be the most costly step (iter over the btreeset is needed)
                     self.vacancies.list[chosen_list].take(&ijk);
                     
                     // at to bulk and upgrade numbers

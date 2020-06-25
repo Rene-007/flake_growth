@@ -185,7 +185,7 @@ impl Iterator for Lattice {
     // The following is returned:
     //     -> When the itereator is finished: None
     //     -> Otherwise: the next value in Some
-    fn next(&mut self) -> Option<IJK> {
+    fn next(&mut self) -> Option<Self::Item> {
 
         // check if we are already at top layer
         if self.next.k == self.max_ijk.k + 1 {

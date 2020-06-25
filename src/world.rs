@@ -181,7 +181,7 @@ impl World {
 
     fn back(&mut self, window: &mut Window) {
         self.flake.clear();
-        self.i = CENTER.i;           // with "let IJK{i,j,k} = ijk" the scope just here
+        self.i = CENTER.i;           // with "let IJK{i,j,k} = ijk" the scope is just here
         self.j = CENTER.j;  
         self.k = CENTER.k;
         if self.flake.add_atom(IJK{i: self.i, j: self.j, k:self.k}) { 
@@ -472,7 +472,7 @@ impl World {
             Ok(_pos) => {} // element already in vector @ `pos` 
             Err(pos) => {
                 stacking.insert(pos, new_fault);
-                // insert/remove a stacking fault down at the bottom to not mess up with the representation
+                // a stacking fault is inserted/removed at the bottom to make the presentation of the atoms easier
                 match stacking.binary_search(&(0)) {
                     Ok(_pos) => {stacking.remove(0);} 
                     Err(pos) => {stacking.insert(pos, 0)}
