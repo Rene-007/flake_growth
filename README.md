@@ -1,6 +1,6 @@
 # Flake Growth
 
-Flake Growth is a tool written in the [Rust programming language](https://www.rust-lang.org/ "Link to the Rust homepage") Rust programming languange for simulating the growth of single-crystalline gold flakes from an initial single atom up to the micrometer scale, i.e. billions of atoms.
+Flake Growth is a tool written in the [Rust programming language](https://www.rust-lang.org/ "Link to the Rust homepage") for simulating the growth of single-crystalline gold flakes from an initial single atom up to the micrometer scale, i.e. billions of atoms.
 
 ![A small animated gif of the initial flake growth](/media/flake_growth_animation-optimized.gif "Animation of the flake growth")
 
