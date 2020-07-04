@@ -51,7 +51,7 @@ impl PlanarScene {
             scene, 
             layers:         window.add_planar_group(), 
             help:           window.add_planar_group(), 
-            show_help:      true,
+            show_help:      false,
             indicators, 
             show, 
             font:           Font::default(), 
