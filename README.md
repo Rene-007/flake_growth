@@ -4,11 +4,12 @@ Flake Growth is a tool written in the [Rust programming language](https://www.ru
 
 ![A small animated gif of the initial flake growth](/media/flake_growth_animation-optimized.gif "Animation of the flake growth")
 
-You can either download the source files and compile them with the rust compiler to have a native version, which is both very easy and straight forward, or you can simply [click her to find the WebAssembly version](https://www.kullock.de/flake_growth/ "Link to the WebAssembly version") wich runs directly in your browser. A small visual guide how to interact with the program [can be found here](https://www.kullock.de/flake-growth-guide/ "Link to a visual guide") and might be very helpful at the beginning.
+You can either download the source files and compile them with the rust compiler to have a native version (which is both very easy and straight forward) or you can simply [click her to find the WebAssembly version](https://www.kullock.de/flake_growth/ "Link to the WebAssembly version") that directly runs in your browser. A small visual guide how to interact with the program [can be found here](https://www.kullock.de/flake-growth-guide/ "Link to a visual guide") and might be very helpful at the beginning.
 
 
 ## Background
 ![A microscope image of a real flake](/media/real-flake.png "A microscope image of a real flake")
+
 Single-crystalline gold flakes are of actually use in nano-optics and technology. An brief overview of the chemical growing process and how this can be emulated in a simulation [can also be found here](https://www.kullock.de/flake-growth-background/ "Link to some background information").
 
 
