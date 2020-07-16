@@ -48,7 +48,7 @@ impl Crystal {
             lattice, 
             prob_list_num:  PROB_LIST_NUM, 
             prob_list, 
-            prob_list_log:  prob_list.iter().map(|&el| (10.0*el as f32).log10() as i8 -1).collect::<Vec<i8>>(), 
+            prob_list_log:  prob_list.iter().map(|&el| ((10.0*el as f32).log10() - 1.0) as i8).collect::<Vec<i8>>(), 
             bulk:   	    Bulk::new(), 
             surface:        SurfaceAtoms::new(), 
             dirt:           SurfaceAtoms::new(), 
