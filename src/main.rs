@@ -11,6 +11,10 @@ mod crystal;
 mod scene;          
 mod planar_scene; 
 
+#[cfg(feature = "sidebar")]
+mod sidebar;        
+#[cfg(feature = "sidebar")]
+pub use sidebar::*;
 
 fn main() {
     let mut window = Window::new_with_size("Flake Growth", 1600, 900);

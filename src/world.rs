@@ -17,8 +17,10 @@ use crate::storage::*;
 use crate::crystal::*;
 use crate::scene::*;
 use crate::planar_scene::*;
+#[cfg(feature = "sidebar")]
+use crate::sidebar::*;
 
-use kiss3d::camera::{Camera, ArcBall};
+use kiss3d::{camera::{Camera, ArcBall}};
 use kiss3d::planar_camera::PlanarCamera;
 use kiss3d::post_processing::PostProcessingEffect;
 use kiss3d::event::{Action, Key, WindowEvent};
@@ -38,6 +40,8 @@ pub struct World {
     i: u16,
     j: u16,
     k: u16,
+    #[cfg(feature = "sidebar")]
+    sidebar: SideBar,
 }
 
 
@@ -53,103 +57,110 @@ impl State for World {
 
     fn step(&mut self, window: &mut Window) {
         if self.scene.show.hexagon {
-            self.scene.draw_hexgon_outline(window);                                 // lines have to be redrawn every time   
+            self.scene.draw_hexgon_outline(window);                     // lines have to be redrawn every time   
         }
         if self.overlay.show {
-            self.overlay.draw_scene(window, &self.flake);                           // text has to be redrawn every time, too
-            self.overlay.update_indicators(window, &self.flake);                    // update length of indicators
+            self.overlay.draw_scene(window, &self.flake);               // text has to be redrawn every time, too
+            self.overlay.update_indicators(window, &self.flake);        // update length of indicators
         }
         if self.overlay.show_help {                                                  
-            self.overlay.show_help(window);                                         // draw help overlay
+            self.overlay.show_help(window);                             // draw help overlay
         }
         if self.scene.show.current {                                                
-            window.remove_node(&mut self.scene.current);                        // highlight the last atom by drawing it again in red 
+            window.remove_node(&mut self.scene.current);            // highlight the last atom by drawing it again in red 
             self.scene.current = window.add_group();                                
             add_atom_to_group(&mut self.scene.current, &self.lattice.position(IJK{i: self.i, j: self.j, k:self.k}), Color(1.0, 0.0, 0.0));
         }
+        
+        // update sidebar and check for virtual key events there 
+        #[cfg(feature = "sidebar")]
+        let mut key = self.sidebar.update(window);
+        #[cfg(not(feature = "sidebar"))]
+        let mut key = Key::Unknown;
+        
+        // check for real key events
         for event in window.events().iter() {
-            match event.value {
-                WindowEvent::Key(key, Action::Press, _) => {     
-                    match key { 
-                        // special actions
-                        Key::Back =>    self.back(window),                          // back to start
-                        Key::Period =>  self.back(window),                          // back to start for wasm
-                        Key::P =>       self.flake.next_prob_list(),                // change probabilities
-                        
-                        #[cfg(not(target_arch = "wasm32"))]
-                        Key::Comma =>   self.statistics(window),                    // some statistics
-                     
-                        // interact with (planar) scene
-                        Key::Space =>   self.show_hide_help(),                      // show/hide help
-                        Key::R =>       self.show_hide_indicators(),                // show/hide indicators
-                        Key::S =>       self.highlight_current_atom(window),        // highlight current atom
-                        Key::G =>       self.show_hide_gold(window),                // show/hide gold atoms
-                        Key::T =>       self.show_hide_dirt(window),                // show/hide dirt atoms
-                        Key::V =>       self.visualize_stacking(window),            // visualize layers on/off 
-                        Key::B =>       self.show_hide_wireframe(),                 // show/hide wireframe (box)
-                        Key::H =>       self.show_hide_hexagon(),                   // show/hide hexagon
-                        Key::Minus =>   self.show_hide_substrate(),                 // show/hide substrate         
-
-                        // add some special geometries
-                        Key::L =>       self.add_gold_layer(window),                // add gold layer
-                        Key::O =>       self.add_dirt_layer(window),                // add dirt layer on top
-                        // Key::Z =>       self.add_box(window),                       // add box     
-                        Key::Home =>    self.add_sphere(window),                    // add sphere     
-                        Key::End =>     self.add_cylinder(window),                  // add cylinder                        
-                        Key::Delete =>  self.add_rounded_monomer_antenna(window),   // add rounded monomer antenna
-                        Key::I =>       self.add_rounded_dipole_antenna(window),    // add rounded Dipole antenna  
-                        Key::K =>       self.add_dipole_antenna(window),            // add Dipole antenna
-                        Key::U =>       self.add_rounded_jord_antenna(window),      // add rounded Jord antenna
-                        Key::J =>       self.add_jord_antenna(window),              // add Jord antenna
-                        Key::Down =>    self.add_remove_substrate(window),          // add/remove substrat below lowest vacancies layer    
-                        // Key::N =>       self.add_column(window),                    // add column step by step    
-                        
-                        // tweak stacking
-                        Key::Up =>      self.reset_stacking(window),                // reset stacking
-                        Key::PageUp =>  self.add_stacking_fault_top(window),        // add stacking faults on top
-                        Key::PageDown =>self.add_stacking_fault_bottom(window),     // add stacking faults on bottom
-
-                        // show/hide vacancies
-                        Key::F1 =>      self.show_hide_vacancy(window, 1),                         
-                        Key::F2 =>      self.show_hide_vacancy(window, 2),                          
-                        Key::F3 =>      self.show_hide_vacancy(window, 3),                                            
-                        Key::F4 =>      self.show_hide_vacancy(window, 4),                                            
-                        Key::F5 =>      self.show_hide_vacancy(window, 5),                                               
-                        Key::F6 =>      self.show_hide_vacancy(window, 6),                                            
-                        Key::F7 =>      self.show_hide_vacancy(window, 7),                                             
-                        Key::F8 =>      self.show_hide_vacancy(window, 8), 
-                        Key::F9 =>      self.show_hide_vacancy(window, 9),            
-                        Key::F  =>      self.show_hide_all_vacancies(window),       // show-hide all
-
-                        // initiating atoms adding at random positions
-                        Key::Key1 =>    self.add_random_atoms(window, true , 1),
-                        Key::Key2 =>    self.add_random_atoms(window, true , 10),
-                        Key::Key3 =>    self.add_random_atoms(window, true , 100),
-                        Key::Key4 =>    self.add_random_atoms(window, true , 1_000),
-                        Key::Key5 =>    self.add_random_atoms(window, true , 10_000),
-                        Key::Key6 =>    self.add_random_atoms(window, false, 100_000),
-                        Key::Key7 =>    self.add_random_atoms(window, false, 1_000_000),
-                        Key::Key8 =>    self.add_random_atoms(window, false, 10_000_000),
-                        Key::Key9 =>    self.add_random_atoms(window, false, 100_000_000),  
-
-                        // go to position and request a new atom there
-                        Key::X =>       self.add_atom(window, IJK{i: self.i,     j: self.j,     k: self.k - 1}),    
-                        Key::W =>       self.add_atom(window, IJK{i: self.i,     j: self.j,     k: self.k + 1}),                    
-                        Key::D =>       self.add_atom(window, IJK{i: self.i + 1, j: self.j,     k: self.k    }),                           
-                        Key::A =>       self.add_atom(window, IJK{i: self.i - 1, j: self.j,     k: self.k    }),                    
-                        Key::E =>       self.add_atom(window, IJK{i: self.i,     j: self.j + 1, k: self.k    }),                    
-                        Key::Y =>       self.add_atom(window, IJK{i: self.i,     j: self.j - 1, k: self.k    }),       
-                        Key::C =>       self.add_atom(window, IJK{i: self.i + 1, j: self.j - 1, k: self.k    }),             
-                        Key::Q =>       self.add_atom(window, IJK{i: self.i - 1, j: self.j + 1, k: self.k    }),  
-                        
-                        _=> {}          // remaining keys
-                    }
-                }
-            _=> {}                      // remaining events
+            if let WindowEvent::Key(real_key, Action::Press, _) = event.value { 
+                key = real_key; 
             }
         }
-    }
 
+        // handle all virtual and real key events
+        match key { 
+            // special actions
+            Key::Back =>    self.back(window),                          // back to start
+            Key::Period =>  self.back(window),                          // back to start for wasm
+            Key::P =>       self.flake.next_prob_list(),                // change probabilities
+            
+            #[cfg(not(target_arch = "wasm32"))]
+            Key::Comma =>   self.statistics(window),                    // some statistics
+         
+            // interact with (planar) scene
+            Key::Space =>   self.show_hide_help(),                      // show/hide help
+            Key::R =>       self.show_hide_indicators(),                // show/hide indicators
+            Key::S =>       self.highlight_current_atom(window),        // highlight current atom
+            Key::G =>       self.show_hide_gold(window),                // show/hide gold atoms
+            Key::T =>       self.show_hide_dirt(window),                // show/hide dirt atoms
+            Key::V =>       self.visualize_stacking(window),            // visualize layers on/off 
+            Key::B =>       self.show_hide_wireframe(),                 // show/hide wireframe (box)
+            Key::H =>       self.show_hide_hexagon(),                   // show/hide hexagon
+            Key::Minus =>   self.show_hide_substrate(),                 // show/hide substrate         
+
+            // add some special geometries
+            Key::L =>       self.add_gold_layer(window),                // add gold layer
+            Key::O =>       self.add_dirt_layer(window),                // add dirt layer on top
+            // Key::Z =>       self.add_box(window),                       // add box     
+            Key::Home =>    self.add_sphere(window),                    // add sphere     
+            Key::End =>     self.add_cylinder(window),                  // add cylinder                        
+            Key::Delete =>  self.add_rounded_monomer_antenna(window),   // add rounded monomer antenna
+            Key::I =>       self.add_rounded_dipole_antenna(window),    // add rounded Dipole antenna  
+            Key::K =>       self.add_dipole_antenna(window),            // add Dipole antenna
+            Key::U =>       self.add_rounded_jord_antenna(window),      // add rounded Jord antenna
+            Key::J =>       self.add_jord_antenna(window),              // add Jord antenna
+            Key::Down =>    self.add_remove_substrate(window),          // add/remove substrat below lowest vacancies layer    
+            // Key::N =>       self.add_column(window),                    // add column step by step    
+            
+            // tweak stacking
+            Key::Up =>      self.reset_stacking(window),                // reset stacking
+            Key::PageUp =>  self.add_stacking_fault_top(window),        // add stacking faults on top
+            Key::PageDown =>self.add_stacking_fault_bottom(window),     // add stacking faults on bottom
+
+            // show/hide vacancies
+            Key::F1 =>      self.show_hide_vacancy(window, 1),                         
+            Key::F2 =>      self.show_hide_vacancy(window, 2),                          
+            Key::F3 =>      self.show_hide_vacancy(window, 3),                                            
+            Key::F4 =>      self.show_hide_vacancy(window, 4),                                            
+            Key::F5 =>      self.show_hide_vacancy(window, 5),                                               
+            Key::F6 =>      self.show_hide_vacancy(window, 6),                                            
+            Key::F7 =>      self.show_hide_vacancy(window, 7),                                             
+            Key::F8 =>      self.show_hide_vacancy(window, 8), 
+            Key::F9 =>      self.show_hide_vacancy(window, 9),            
+            Key::F  =>      self.show_hide_all_vacancies(window),       // show-hide all
+
+            // initiating atoms adding at random positions
+            Key::Key1 =>    self.add_random_atoms(window, true , 1),
+            Key::Key2 =>    self.add_random_atoms(window, true , 10),
+            Key::Key3 =>    self.add_random_atoms(window, true , 100),
+            Key::Key4 =>    self.add_random_atoms(window, true , 1_000),
+            Key::Key5 =>    self.add_random_atoms(window, true , 10_000),
+            Key::Key6 =>    self.add_random_atoms(window, false, 100_000),
+            Key::Key7 =>    self.add_random_atoms(window, false, 1_000_000),
+            Key::Key8 =>    self.add_random_atoms(window, false, 10_000_000),
+            Key::Key9 =>    self.add_random_atoms(window, false, 100_000_000),  
+
+            // go to position and request a new atom there
+            Key::X =>       self.add_atom(window, IJK{i: self.i,     j: self.j,     k: self.k - 1}),    
+            Key::W =>       self.add_atom(window, IJK{i: self.i,     j: self.j,     k: self.k + 1}),                    
+            Key::D =>       self.add_atom(window, IJK{i: self.i + 1, j: self.j,     k: self.k    }),                           
+            Key::A =>       self.add_atom(window, IJK{i: self.i - 1, j: self.j,     k: self.k    }),                    
+            Key::E =>       self.add_atom(window, IJK{i: self.i,     j: self.j + 1, k: self.k    }),                    
+            Key::Y =>       self.add_atom(window, IJK{i: self.i,     j: self.j - 1, k: self.k    }),       
+            Key::C =>       self.add_atom(window, IJK{i: self.i + 1, j: self.j - 1, k: self.k    }),             
+            Key::Q =>       self.add_atom(window, IJK{i: self.i - 1, j: self.j + 1, k: self.k    }),  
+            
+            _=> {}          // remaining keys
+        }        
+    }
 }
 
 
@@ -167,6 +178,10 @@ impl World {
         // start with a single atom in the middle
         let IJK { i, j, k } = CENTER;
 
+        // init sidebar and its virtual key
+        #[cfg(feature = "sidebar")]
+        let sidebar = SideBar::new(window);
+
         World{
             overlay,
             scene,
@@ -176,6 +191,8 @@ impl World {
             i,
             j,
             k,
+            #[cfg(feature = "sidebar")]
+            sidebar,
         }
     }
 
@@ -342,14 +359,14 @@ impl World {
     fn add_dipole_antenna(&mut self, window: &mut Window) {
         self.flake.clear();
         // left arm
-        let pos = XYZ{x: -15.0, y: 0.0, z: 0.0};
-        self.flake.add_box(pos, 20.0, 10.0, 6.0, Atom::Gold);
-        // left arm scond level
-        let pos = XYZ{x: -15.0, y: 0.0, z: 3.5};
-        self.flake.add_box(pos, 18.0, 8.0, 1.0, Atom::Gold);
+        let pos = XYZ{x: -10.0, y: 0.0, z: 0.0};
+        self.flake.add_box(pos, 14.0, 6.0, 6.0, Atom::Gold);
+        // // left arm scond level
+        // let pos = XYZ{x: -15.0, y: 0.0, z: 3.5};
+        // self.flake.add_box(pos, 18.0, 8.0, 1.0, Atom::Gold);
         // right arm
-        let pos = XYZ{x: 15.0, y: 0.0, z: 0.0};
-        self.flake.add_box(pos, 20.0, 10.0, 6.0, Atom::Gold);
+        let pos = XYZ{x: 10.0, y: 0.0, z: 0.0};
+        self.flake.add_box(pos, 14.0, 6.0, 6.0, Atom::Gold);
         // other stuff
         self.camera = ArcBall::new(Point3::new(-45.0, 22.5, 0.0), Point3::origin());
         self.scene.update_surface(window, &self.flake);

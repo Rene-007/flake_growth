@@ -1,6 +1,6 @@
 [package]
 name = "flake_growth"
-version = "0.40.0"
+version = "0.50.0"
 authors = ["René Kullock"]
 edition = "2018"
 
@@ -12,15 +12,19 @@ include = [
     "src/**/*.rs"
 ]
 
+[features]
+default = ["sidebar"]
+sidebar = ["kiss3d/conrod"]
+
 [dependencies]
-kiss3d = "0.24.1"
-nalgebra = "0.21.0"
-ndarray = "0.13.1"
-stdweb = "0.4.20"
+kiss3d = "0.28"
+nalgebra = "0.23"
+ndarray = "0.14"
+stdweb = "0.4"
 rand = { version = "0.7", features = [ "stdweb" ] }
 # rand = { version = "0.7.3", features = [ "small_rng" ] }      # small_rng should be faster but wasn't
-separator = "0.4.1"
-csv = "1.1.3"
+separator = "0.4"
+csv = "1.1"
 instant = "0.1"                                                 # needed for getting the timing also to work for wasm
 
 # lto does not improve the performance

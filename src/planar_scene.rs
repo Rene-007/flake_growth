@@ -106,12 +106,12 @@ impl PlanarScene {
         let [ax,ay,bx,by,cx,cy,..] = &flake.get_hexagon();
         let len1 = ((ax-bx).powi(2) + (ay-by).powi(2)).sqrt();
         let len2 = ((cx-bx).powi(2) + (cy-by).powi(2)).sqrt();
-        let x_pos = (2*window.width()-350) as f32;
-        let height = format!("Height:  {:.2}",h);
+        let x_pos = (2*window.width()-350-2*SIDEBARWIDTH) as f32;
+        let height = format!("Height:    {:.2}",h);
         window.draw_text(&height[..], &Point2::new(x_pos, (2*window.height()-320) as f32), 50.0, &self.font, &Point3::new(0.0, 0.0, 0.0));
-        let width = format!("Width:   {:.2}",w);
+        let width = format!("Width:     {:.2}",w);
         window.draw_text(&width[..], &Point2::new(x_pos, (2*window.height()-260) as f32), 50.0, &self.font, &Point3::new(0.0, 0.0, 0.0));
-        let depth = format!("Depth:   {:.2}",d);
+        let depth = format!("Depth:     {:.2}",d);
         window.draw_text(&depth[..], &Point2::new(x_pos, (2*window.height()-200) as f32), 50.0, &self.font, &Point3::new(0.0, 0.0, 0.0));
         let ratio = format!("A-Ratio:   {:2.2}",r);
         window.draw_text(&ratio[..], &Point2::new(x_pos, (2*window.height()-140) as f32), 50.0, &self.font, &Point3::new(0.0, 0.0, 0.0));
@@ -161,13 +161,13 @@ impl PlanarScene {
         window.remove_planar_node(&mut self.help);
         self.help = window.add_planar_group();
 
-        let y: f32 = 90.0;
-        self.draw_text(window, "René Kullock", -47.5, y);
-        self.draw_text(window, "Spring 2020", 70.5, y);
+        let y: f32 = 87.5;
+        self.draw_text(window, "René Kullock", -57.5, y);
+        self.draw_text(window, "© 2020", 67.5, y);
 
 
         // navigation keys
-        let x: f32 = -40.0;
+        let x: f32 = -50.0;
         let y: f32 = 40.0;
         let dx: f32 = 7.5;
         let dy: f32 = 15.0;
@@ -183,7 +183,7 @@ impl PlanarScene {
         self.draw_key(window, " C", x + dx, y - dy);
 
         // show/hide keys
-        let x: f32 = -40.0;
+        let x: f32 = -50.0;
         let y: f32 = -17.5;
         let dx: f32 = 7.5;
         let dy: f32 = 15.0;
@@ -211,7 +211,7 @@ impl PlanarScene {
         self.draw_key(window, " -", x + dx*1.2, y - dy*1.2);
         
         // add structures
-        let x: f32 = 37.5;
+        let x: f32 = 27.5;
         let y: f32 = -17.5;
         let dx: f32 = 7.5;
         let dy: f32 = 15.0;
@@ -230,7 +230,7 @@ impl PlanarScene {
         self.draw_key(window, " L", x + dx, y);
 
         // show/hide vacancies
-        let x: f32 = -15.0;
+        let x: f32 = -25.0;
         let y: f32 = 55.0;
         let dx: f32 = 7.5;
         self.draw_header(window, "Show/Hide Vacancies", x, y + dy);
@@ -245,7 +245,7 @@ impl PlanarScene {
         self.draw_key(window, "F9", x + 8.0*dx, y);
 
         // random add
-        let x: f32 = -15.0;
+        let x: f32 = -25.0;
         let y: f32 = 25.0;
         let dx: f32 = 7.5;
         self.draw_header(window, "Add a Number of Random Atoms", x, y + dy);
@@ -260,7 +260,7 @@ impl PlanarScene {
         self.draw_key(window, " 9", x + 8.0*dx, y);
         
         // toggle lattice
-        let x: f32 = -40.0 + 3.0;
+        let x: f32 = -50.0 + 3.0;
         let y: f32 = -60.0;
         let dx: f32 = 7.5;
         let dy: f32 = 15.0;
@@ -273,7 +273,7 @@ impl PlanarScene {
         self.draw_key(window, " ↑", x + 4.0*dx, y);
         
         // substrate
-        let x: f32 = 45.0;
+        let x: f32 = 35.0;
         let y: f32 = -60.0;
         let dy: f32 = 15.0;
         let dt: f32 = 30.0;
@@ -281,7 +281,7 @@ impl PlanarScene {
         self.draw_key(window, " ↓", x, y);
 
         // special keys
-        let x: f32 = 80.0;
+        let x: f32 = 70.0;
         let y: f32 = 40.0;
         let dy: f32 = 15.0;
         let dt: f32 = 18.0;
@@ -294,8 +294,8 @@ impl PlanarScene {
         {
         self.draw_text(window, "Reset", x - dt, y + dy);
         self.draw_key(window, " :", x, y + dy);
-
         }
+        
         #[cfg(not(target_arch = "wasm32"))]
         {
         self.draw_text(window, "Reset", x - dt, y + dy);
@@ -305,7 +305,7 @@ impl PlanarScene {
         }
 
         // Space
-        self.draw_wide_key(window, "Space → show/hide help", 7.5, -85.0, 600.0);
+        self.draw_wide_key(window, "Space → show/hide help", -2.5, -85.0, 600.0);
 
         // window.draw_text("help", &Point2::new(pos_x, pos_y), 50.0, &self.font, &Point3::new(0.0, 0.0, 0.0));       
     }
@@ -335,7 +335,7 @@ impl PlanarScene {
         // let max = max_k-min_k;
         let number = std::cmp::max(max,20) as f32;
         let step_y = (window.height() as f32) / (-1.3*number);
-        let pos_x = (window.width()/2) as f32 - 50.0;
+        let pos_x = (window.width()/2-SIDEBARWIDTH) as f32 - 50.0;
         let pos_y = (window.height()/4) as f32 - 160.0 - step_y/2.0*(max as f32);
         // let step_y = 30.0;
         for index in min_k..=max_k {
