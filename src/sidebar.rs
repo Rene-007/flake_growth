@@ -14,9 +14,8 @@ const TITLE_SIZE: conrod::FontSize = 24;
 const LABEL_SIZE: conrod::FontSize = 10;
 
 const DISTANCE: f64 = 30.0;
-const SHORT_DIST: f64 = 20.0;
+const SHORT_DIST: f64 = 11.0;
 const SIDE: f64 = 40.0;
-const SHORT_DIST2: f64 = 10.0;
 const SIDE2: f64 = 30.0;
 const WIDE2: f64 = 70.0;
 
@@ -37,11 +36,12 @@ widget_ids! {
         key7, key8, key9,
         add_stacking_faults,
         page_up, page_down, remove_faults, 
+        substrate,
+        down, minus,
         show_hide,
         s, v,
         f, g,
         b, h,
-        t, minus,
         copyright,
     }
 }
@@ -115,7 +115,7 @@ impl SideBar {
             .label("help")
             .label_font_size(LABEL_SIZE)
             .mid_left_with_margin_on(self.ids.canvas, MARGIN)
-            .down(SHORT_DIST2)
+            .down(SHORT_DIST)
             .w_h(WIDE2, SIDE2)
             .set(self.ids.help, ui)
         {
@@ -363,6 +363,35 @@ impl SideBar {
             self.virtual_key = Key::Up;
         }
 
+        // substrate
+        widget::Text::new("substrate")
+            .padded_w_of(self.ids.canvas, MARGIN)
+            .down(DISTANCE)
+            .align_middle_x_of(self.ids.canvas)
+            .set(self.ids.substrate, ui);
+            
+        for _press in widget::Button::new()
+            .label("on/off")
+            .label_font_size(LABEL_SIZE)
+            .mid_left_with_margin_on(self.ids.canvas, MARGIN)
+            .down(SHORT_DIST)
+            .w_h(WIDE2, SIDE2)
+            .set(self.ids.down, ui)
+        {
+            self.virtual_key = Key::Down;
+        }
+
+        for _press in widget::Button::new()
+            .label("show/hide")
+            .label_font_size(LABEL_SIZE)
+            .mid_right_with_margin_on(self.ids.canvas, MARGIN)
+            .y_position_relative(Relative::Align(Align::Start))
+            .w_h(WIDE2, SIDE2)
+            .set(self.ids.minus, ui)
+        {
+            self.virtual_key = Key::Minus;
+        }
+
         // show/hide
         widget::Text::new("show/hide")
             .padded_w_of(self.ids.canvas, MARGIN)
@@ -374,7 +403,7 @@ impl SideBar {
             .label("last atom")
             .label_font_size(LABEL_SIZE)
             .mid_left_with_margin_on(self.ids.canvas, MARGIN)
-            .down(SHORT_DIST2)
+            .down(SHORT_DIST)
             .w_h(WIDE2, SIDE2)
             .set(self.ids.s, ui)
         {
@@ -396,7 +425,7 @@ impl SideBar {
             .label("surface")
             .label_font_size(LABEL_SIZE)
             .mid_left_with_margin_on(self.ids.canvas, MARGIN)
-            .down(SHORT_DIST2)
+            .down(SHORT_DIST)
             .w_h(WIDE2, SIDE2)
             .set(self.ids.f, ui)
         {
@@ -418,7 +447,7 @@ impl SideBar {
             .label("box")
             .label_font_size(LABEL_SIZE)
             .mid_left_with_margin_on(self.ids.canvas, MARGIN)
-            .down(SHORT_DIST2)
+            .down(SHORT_DIST)
             .w_h(WIDE2, SIDE2)
             .set(self.ids.b, ui)
         {
@@ -434,28 +463,6 @@ impl SideBar {
             .set(self.ids.h, ui)
         {
             self.virtual_key = Key::H;
-        }
-
-        for _press in widget::Button::new()
-            .label("dirt")
-            .label_font_size(LABEL_SIZE)
-            .mid_left_with_margin_on(self.ids.canvas, MARGIN)
-            .down(SHORT_DIST2)
-            .w_h(WIDE2, SIDE2)
-            .set(self.ids.t, ui)
-        {
-            self.virtual_key = Key::T;
-        }
-
-        for _press in widget::Button::new()
-            .label("substrate")
-            .label_font_size(LABEL_SIZE)
-            .mid_right_with_margin_on(self.ids.canvas, MARGIN)
-            .y_position_relative(Relative::Align(Align::Start))
-            .w_h(WIDE2, SIDE2)
-            .set(self.ids.minus, ui)
-        {
-            self.virtual_key = Key::Minus;
         }
 
         // copyright

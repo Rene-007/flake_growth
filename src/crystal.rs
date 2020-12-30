@@ -48,7 +48,7 @@ impl Crystal {
             lattice, 
             prob_list_num:  PROB_LIST_NUM, 
             prob_list, 
-            prob_list_log:  prob_list.iter().map(|&el| ((10.0*el as f32).log10() - 1.0) as i8).collect::<Vec<i8>>(), 
+            prob_list_log:  prob_list.iter().map(|&el| (el as f32 + 0.1).log10() as i8).collect::<Vec<i8>>(), 
             bulk:   	    Bulk::new(), 
             surface:        SurfaceAtoms::new(), 
             dirt:           SurfaceAtoms::new(), 
@@ -104,7 +104,7 @@ impl Crystal {
     pub fn next_prob_list(&mut self) {     
         self.prob_list_num = (self.prob_list_num + 1).rem_euclid(PROB_LIST.len());
         self.prob_list = PROB_LIST[self.prob_list_num];
-        self.prob_list_log = self.prob_list.iter().map(|&el| (10.0*el as f32).log10() as i8 -1).collect::<Vec<i8>>();
+        self.prob_list_log = self.prob_list.iter().map(|&el| (el as f32 + 0.1).log10() as i8).collect::<Vec<i8>>();
         // println!("new prob_list {:?}: 10^{:2?} = {:13?}", self.prob_list_num, self.prob_list_log, self.prob_list);
     }
 
