@@ -17,8 +17,8 @@ default = ["sidebar"]
 sidebar = ["kiss3d/conrod"]
 
 [dependencies]
-kiss3d = "0.28"
-nalgebra = "0.23"
+kiss3d = "0.24"
+nalgebra = "0.21"
 ndarray = "0.14"
 stdweb = "0.4"
 rand = { version = "0.7", features = [ "stdweb" ] }
