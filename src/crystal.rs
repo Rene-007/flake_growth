@@ -669,7 +669,7 @@ impl Crystal {
 
 
     /// This is the statistics module.
-    /// Parameters like the stacking positions, substrate + probabilities can be change at runtime,
+    /// Parameters like the stacking positions, substrate + probabilities can be changed at runtime,
     /// and most of the other important ones at compile time via the paramters.rs.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn statistics(&mut self) -> usize {
@@ -725,11 +725,11 @@ impl Crystal {
         added_atoms
     }
 
-    /// Save the positions of all atoms
+    /// Save the positions of all atoms as `XXX_number-of-atoms_YYY.csv`, where XXX is given by the FILENAME defined in parameters.rs and YYY is current number of atoms.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn save(&mut self) {
 
-        // // create file and write header
+        // create file and write header
         let filename = format!("{}_number-of-atoms_{}.csv", FILENAME, self.bulk.number_of_atoms);
         let mut f = File::create(filename).expect("Unable to create file"); 
         writeln!(f, "Bulk atoms: x, y, z").expect("Unable to write in file");

@@ -1,3 +1,9 @@
+/*!
+Sidebar to have a more obvious control of the program
+
+This feature uses the conrod widget ui and can be deactivated at compile time.
+*/
+
 use kiss3d::conrod;
 use kiss3d::conrod::position::{Align, Positionable, Direction, Padding, Position, Relative};
 use kiss3d::conrod::{widget_ids, widget, Labelable, Sizeable, Widget};
@@ -82,7 +88,7 @@ impl SideBar {
     }
 
 
-    // Instantiate the sidebar with the conrod syntax.
+    // Instantiate the sidebar using the conrod syntax.
     pub fn update(&mut self, window: &mut Window) -> Key {
         
         // reinitialize widget ui
