@@ -48,7 +48,7 @@ pub const VAC_COLORS: [Color; 9] = [Color(0.4,1.0,0.4), Color(0.4,0.4,1.0), Colo
 pub const DIAMETER: f32 = 0.40782;             
 
 // statistics mode
-pub const FILENAME: &str = "test";
+pub const FILENAME: &str = "flake";
 pub const NUMBER_OF_CYCLES: usize = 3;
 pub const STOP_MARKS: [usize; 5] = [100, 1_000, 10_000, 100_000, 1_000_000];
 // pub const STOP_MARKS: [usize; 10] = [100, 300, 1_000, 3_000, 10_000, 30_000, 100_000, 300_000, 1_000_000, 3_000_000];

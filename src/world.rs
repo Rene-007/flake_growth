@@ -95,6 +95,9 @@ impl State for World {
             #[cfg(not(target_arch = "wasm32"))]
             Key::Comma =>   self.statistics(window),                    // some statistics
          
+            #[cfg(not(target_arch = "wasm32"))]
+            Key::M =>   self.flake.save(),                              // save flake
+         
             // interact with (planar) scene
             Key::Space =>   self.show_hide_help(),                      // show/hide help
             Key::R =>       self.show_hide_indicators(),                // show/hide indicators

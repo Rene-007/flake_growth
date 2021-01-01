@@ -302,6 +302,8 @@ impl PlanarScene {
         self.draw_wide_key(window, "←−−", x  - 2.0, y + dy, 80.0);
         self.draw_text(window, "Statistics", x - dt, y - dy);
         self.draw_key(window, "  ;", x, y - dy);
+        self.draw_text(window, "Save Flake", x - dt, y - 2.0*dy);
+        self.draw_key(window, " M", x, y - 2.0*dy);
         }
 
         // Space

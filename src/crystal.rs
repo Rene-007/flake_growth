@@ -725,4 +725,31 @@ impl Crystal {
         added_atoms
     }
 
+    /// Save the positions of all atoms
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn save(&mut self) {
+
+        // // create file and write header
+        let filename = format!("{}_number-of-atoms_{}.csv", FILENAME, self.bulk.number_of_atoms);
+        let mut f = File::create(filename).expect("Unable to create file"); 
+        writeln!(f, "Bulk atoms: x, y, z").expect("Unable to write in file");
+        
+        // start saving
+        println!("Saving flake...");
+            // iterate over all atoms in the bulk
+            for i in self.bulk.i_min-1..=self.bulk.i_max+1 {
+                for j in self.bulk.j_min-1..=self.bulk.j_max+1 {
+                    for k in self.bulk.k_min-1..=self.bulk.k_max+1 {
+                        let ijk = IJK{i, j, k};
+                        if self.bulk.get(ijk, Atom::Gold) { 
+                            // get and save the coordinates
+                            let pos = self.lattice.get_xyz(ijk);
+                            write!(f, "{}, {}, {}\n", pos.x, pos.y, pos.z).unwrap();
+                        }
+                    }
+                }
+            }            
+
+        println!("...finished");
+    }
 }
