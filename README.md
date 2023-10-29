@@ -17,6 +17,10 @@ Single-crystalline gold flakes are of actually use in nano-optics and technology
 I would like to thank all the people who made/make Rust such a powerful and still elegant language and the authors of [kiss3d](https://github.com/sebcrozet/kiss3d "Link to the kiss3d page") who made it easy to display the scene -- even inside the browser! 
 
 
+## Funding 
+This work was supported by the Volkswagen Foundation (Grant 93437).
+
+
 ## License
 This project is licensed under the [GNU Affero General Public License v3.0](LICENSE "Link to the AGPL") and if you publish scientific work which is based on this code I would be grateful if you include a reference to this Github source page. If you have any issues with that feel free to contact me.
 
